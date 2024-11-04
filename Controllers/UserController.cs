@@ -60,5 +60,28 @@ namespace real_time_chat_web.Controllers
             _apiResponse.StatusCode = HttpStatusCode.OK;
             return Ok(_apiResponse);
         }
+        [HttpPost("refresh")]
+        public async Task<IActionResult> GetNewTokenFromRefreshToken(TokenDTO tokenDTO)
+        {
+            if (ModelState.IsValid)
+            {
+                var tokenDTOResponse = await _userRepo.RefreshAccessToken(tokenDTO);
+                if (tokenDTOResponse == null || string.IsNullOrEmpty(tokenDTOResponse.AccessToken))
+                {
+                    _apiResponse.IsSuccess = false;
+                    _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                    _apiResponse.Result = "Invalid Input";
+                    return BadRequest(_apiResponse);
+                }
+                _apiResponse.IsSuccess = true;
+                _apiResponse.StatusCode = HttpStatusCode.OK;
+                _apiResponse.Result = tokenDTOResponse;
+                return Ok(_apiResponse);
+            }
+            _apiResponse.IsSuccess = false;
+            _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+            _apiResponse.Result = "Invalid Input";
+            return BadRequest(_apiResponse);
+        }
     }
 }

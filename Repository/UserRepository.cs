@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using real_time_chat_web.Data;
@@ -37,27 +39,37 @@ namespace real_time_chat_web.Repository
 
         public async Task<TokenDTO> Login(LoginRequestDTO loginRequestDTO)
         {
-            var user = _db.ApplicationUsers.FirstOrDefault(x => x.UserName.ToLower() == loginRequestDTO.UserName.ToLower());
-
-            var isValid = await _userManager.CheckPasswordAsync(user, loginRequestDTO.Password);
-            if (user == null || !isValid)
+            var user = await _userManager.FindByNameAsync(loginRequestDTO.UserName);
+            if (user == null || !await _userManager.CheckPasswordAsync(user, loginRequestDTO.Password))
             {
-                return new TokenDTO()
+                return new TokenDTO
                 {
-                    AccessToken = ""
+                    AccessToken = "",
+                    Message = "Username or password is incorrect."
                 };
             }
-            ////if user was found generate JWT Token
+
+            // Check if the email is confirmed
+            var isEmailConfirmed = await _userManager.IsEmailConfirmedAsync(user);
+            if (!isEmailConfirmed)
+            {
+                return new TokenDTO
+                {
+                    AccessToken = "",
+                    Message = "Please verify your email before logging in."
+                };
+            }
+
+            // Generate JWT token
             var jwtTokenId = $"JTI{Guid.NewGuid()}";
             var accessToken = await GetAccessToken(user, jwtTokenId);
             var refreshToken = await CreateNewRefreshToken(user.Id, jwtTokenId);
 
-            TokenDTO tokenDTO = new TokenDTO()
+            return new TokenDTO
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken,
+                RefreshToken = refreshToken
             };
-            return tokenDTO;
         }
 
         public async Task<UserDTO> Register(RegisterationRequestDTO registerationRequestDTO)
@@ -75,14 +87,21 @@ namespace real_time_chat_web.Repository
                 var result = await _userManager.CreateAsync(user, registerationRequestDTO.Password);
                 if (result.Succeeded)
                 {
+                    
                     if (!_roleManager.RoleExistsAsync(registerationRequestDTO.Role).GetAwaiter().GetResult())
                     {
                         await _roleManager.CreateAsync(new IdentityRole(registerationRequestDTO.Role));
                     }
                     await _userManager.AddToRoleAsync(user, registerationRequestDTO.Role);
-                    var userToReturn = _db.ApplicationUsers
-                        .FirstOrDefault(x => x.UserName == registerationRequestDTO.UserName);
-                    return _mapper.Map<UserDTO>(userToReturn);
+                    //require email confirmation
+                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    //email functionality to send the code to the user
+                    return new UserDTO
+                    {
+                        UserName = user.UserName,
+                        Email = user.Email,
+                        ConfirmationMessage = $"Please confirm your email with the code that you received: {code}"
+                    };
                 }
                 else
                 {

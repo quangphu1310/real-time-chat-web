@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using real_time_chat_web.Models;
@@ -14,28 +15,32 @@ namespace real_time_chat_web.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepo;
+        private readonly UserManager<ApplicationUser> _userManager;
         private APIResponse _apiResponse; 
-        public UserController(IUserRepository userRepo)
+        public UserController(IUserRepository userRepo, UserManager<ApplicationUser> userManager)
         {
             _userRepo = userRepo;
+            _userManager = userManager;
             _apiResponse = new APIResponse();
         }
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO loginRequestDTO)
         {
             var tokenDTO = await _userRepo.Login(loginRequestDTO);
-            if (tokenDTO == null || string.IsNullOrEmpty(tokenDTO.AccessToken))
+            if (string.IsNullOrEmpty(tokenDTO.AccessToken))
             {
                 _apiResponse.IsSuccess = false;
-                _apiResponse.Errors.Add("Username or password isn't correct!");
+                _apiResponse.Errors.Add(tokenDTO.Message);
                 _apiResponse.StatusCode = HttpStatusCode.BadRequest;
                 return BadRequest(_apiResponse);
             }
+
             _apiResponse.IsSuccess = true;
-            _apiResponse.StatusCode = HttpStatusCode.OK;
             _apiResponse.Result = tokenDTO;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
             return Ok(_apiResponse);
         }
+
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterationRequestDTO requestDTO)
         {
@@ -82,6 +87,35 @@ namespace real_time_chat_web.Controllers
             _apiResponse.StatusCode = HttpStatusCode.BadRequest;
             _apiResponse.Result = "Invalid Input";
             return BadRequest(_apiResponse);
+        }
+        [HttpPost("EmailVerification")]
+        public async Task<IActionResult> EmailVerification(string? email, string? code)
+        {
+            if (email == null || code == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("Invalid Input");
+                return BadRequest(_apiResponse);
+            }
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("Invalid Input");
+                return BadRequest(_apiResponse);
+            }
+            var isVerified = await _userManager.ConfirmEmailAsync(user, code);
+            if (isVerified.Succeeded)
+            {
+                return Ok("Email Verified Successfully");
+            }
+            _apiResponse.IsSuccess = false;
+            _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+            _apiResponse.Errors.Add("Something went wrong!");
+            return BadRequest(_apiResponse);
+
         }
     }
 }

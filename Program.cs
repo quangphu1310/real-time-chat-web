@@ -1,24 +1,35 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using real_time_chat_web;
 using real_time_chat_web.Data;
 using real_time_chat_web.Models;
-using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
+using real_time_chat_web.Repository;
 using real_time_chat_web.Services;
+using real_time_chat_web;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
+
+// Cấu hình CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddAuthentication(o =>
 {
     o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -35,14 +46,12 @@ builder.Services.AddAuthentication(o =>
         ValidateAudience = false
     };
 });
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
-//builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
-//builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-//    options.SignIn.RequireConfirmedAccount = true)
-//.AddEntityFrameworkStores<ApplicationDbContext>();
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
@@ -67,9 +76,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Thêm middleware CORS trước Authorization
+app.UseCors("AllowAllOrigins");
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 
 app.Run();

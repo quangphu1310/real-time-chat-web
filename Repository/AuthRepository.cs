@@ -9,6 +9,7 @@ using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Services;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -79,6 +80,12 @@ namespace real_time_chat_web.Repository
 
         public async Task<UserDTO> Register(RegisterationRequestDTO registerationRequestDTO)
         {
+            // Kiểm tra tính hợp lệ của email
+            if (!new EmailAddressAttribute().IsValid(registerationRequestDTO.UserName))
+            {
+                throw new Exception("The specified string is not in the form required for an e-mail address.");
+            }
+
             ApplicationUser user = new()
             {
                 UserName = registerationRequestDTO.UserName,
@@ -86,32 +93,33 @@ namespace real_time_chat_web.Repository
                 Email = registerationRequestDTO.UserName,
                 NormalizedEmail = registerationRequestDTO.UserName.ToUpper()
             };
+
             try
             {
+                // Tạo người dùng và kiểm tra kết quả
                 var result = await _userManager.CreateAsync(user, registerationRequestDTO.Password);
                 if (result.Succeeded)
                 {
-
-                    if (!_roleManager.RoleExistsAsync(registerationRequestDTO.Role).GetAwaiter().GetResult())
+                    if (!await _roleManager.RoleExistsAsync(registerationRequestDTO.Role))
                     {
                         await _roleManager.CreateAsync(new IdentityRole(registerationRequestDTO.Role));
                     }
                     await _userManager.AddToRoleAsync(user, registerationRequestDTO.Role);
-                    //require email confirmation
+
+                    // Xác nhận email
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    //send code to email
                     await _emailService.SendEmail(user.Email, "Email Confirmation", code);
-                    //email functionality to send the code to the user
+
                     return new UserDTO
                     {
                         UserName = user.UserName,
                         Email = user.Email,
-                        ConfirmationMessage = $"Please confirm your email with the code that you received!"
+                        ConfirmationMessage = "Please confirm your email with the code that you received!"
                     };
                 }
                 else
                 {
-                    // Display password errors
+                    // Ghi nhận và ném các lỗi mật khẩu hoặc bất kỳ lỗi nào khác
                     string errors = string.Join(", ", result.Errors.Select(e => e.Description));
                     throw new Exception(errors);
                 }
@@ -121,6 +129,7 @@ namespace real_time_chat_web.Repository
                 throw new Exception(ex.Message);
             }
         }
+
         public async Task<string> GetAccessToken(ApplicationUser user, string jwtTokenId)
         {
             var tokenHandler = new JwtSecurityTokenHandler();

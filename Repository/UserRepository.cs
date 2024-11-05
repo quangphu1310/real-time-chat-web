@@ -83,7 +83,6 @@ namespace real_time_chat_web.Repository
                 UserName = registerationRequestDTO.UserName,
                 Name = registerationRequestDTO.Name,
                 Email = registerationRequestDTO.UserName,
-                PhoneNumber = registerationRequestDTO.PhoneNumber,
                 NormalizedEmail = registerationRequestDTO.UserName.ToUpper()
             };
             try
@@ -106,19 +105,20 @@ namespace real_time_chat_web.Repository
                     {
                         UserName = user.UserName,
                         Email = user.Email,
-                        ConfirmationMessage = $"Please confirm your email with the code that you received: {code}"
+                        ConfirmationMessage = $"Please confirm your email with the code that you received!"
                     };
                 }
                 else
                 {
-                    var errors = result.Errors.Select(e => e.Description).ToList();
+                    // Display password errors
+                    string errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new Exception(errors);
                 }
             }
             catch (Exception ex)
             {
-                throw ex; 
+                throw new Exception(ex.Message);
             }
-            return new UserDTO();
         }
         public async Task<string> GetAccessToken(ApplicationUser user, string jwtTokenId)
         {

@@ -52,18 +52,28 @@ namespace real_time_chat_web.Controllers
                 _apiResponse.Errors.Add("User already exists");
                 return BadRequest(_apiResponse);
             }
-            var user = await _userRepo.Register(requestDTO);
-            if (user == null)
+            try
+            {
+                var user = await _userRepo.Register(requestDTO);
+                if (user == null)
+                {
+                    _apiResponse.IsSuccess = false;
+                    _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                    _apiResponse.Errors.Add("Error while registeration!");
+                    return BadRequest(_apiResponse);
+                }
+                _apiResponse.IsSuccess = true;
+                _apiResponse.Result = user;
+                _apiResponse.StatusCode = HttpStatusCode.OK;
+                return Ok(_apiResponse);
+            }
+            catch (Exception ex)
             {
                 _apiResponse.IsSuccess = false;
                 _apiResponse.StatusCode = HttpStatusCode.BadRequest;
-                _apiResponse.Errors.Add("Error while registeration!");
+                _apiResponse.Errors.Add(ex.Message);
                 return BadRequest(_apiResponse);
             }
-            _apiResponse.IsSuccess = true;
-            _apiResponse.Result = user;
-            _apiResponse.StatusCode = HttpStatusCode.OK;
-            return Ok(_apiResponse);
         }
         [HttpPost("refresh")]
         public async Task<IActionResult> GetNewTokenFromRefreshToken(TokenDTO tokenDTO)

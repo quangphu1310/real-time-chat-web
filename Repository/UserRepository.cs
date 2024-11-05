@@ -10,6 +10,7 @@ using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Services;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 
@@ -90,7 +91,7 @@ namespace real_time_chat_web.Repository
                 var result = await _userManager.CreateAsync(user, registerationRequestDTO.Password);
                 if (result.Succeeded)
                 {
-                    
+
                     if (!_roleManager.RoleExistsAsync(registerationRequestDTO.Role).GetAwaiter().GetResult())
                     {
                         await _roleManager.CreateAsync(new IdentityRole(registerationRequestDTO.Role));
@@ -227,5 +228,22 @@ namespace real_time_chat_web.Repository
             }
         }
 
+        public async Task<ResponseTokenPasswordDTO> ForgotPassword(RequestForgotPasswordDTO request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                return new ResponseTokenPasswordDTO();
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            if (string.IsNullOrEmpty(token))
+                return new ResponseTokenPasswordDTO();
+            //send email
+            await _emailService.SendEmail(user.Email, "Code to reset your password", token);
+
+            return new ResponseTokenPasswordDTO()
+            {
+                Email = user.Email,
+                Token = token
+            };
+        }
     }
 }

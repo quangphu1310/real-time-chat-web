@@ -119,13 +119,65 @@ namespace real_time_chat_web.Controllers
             var isVerified = await _userManager.ConfirmEmailAsync(user, code);
             if (isVerified.Succeeded)
             {
-                return Ok("Email Verified Successfully");
+                _apiResponse.IsSuccess = true;
+                _apiResponse.StatusCode = HttpStatusCode.OK;
+                _apiResponse.Result = "Email Verified Successfully";
+                return Ok(_apiResponse);
             }
             _apiResponse.IsSuccess = false;
             _apiResponse.StatusCode = HttpStatusCode.BadRequest;
             _apiResponse.Errors.Add("Something went wrong!");
             return BadRequest(_apiResponse);
 
+        }
+        [HttpPost("ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword(RequestForgotPasswordDTO request)
+        {
+            if (ModelState.IsValid) {
+                var tokenResponse = await _userRepo.ForgotPassword(request);
+                if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.Token))
+                {
+                    _apiResponse.IsSuccess = false;
+                    _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                    _apiResponse.Result = "Invalid Input";
+                    return BadRequest(_apiResponse);
+                }
+                _apiResponse.IsSuccess = true;
+                _apiResponse.StatusCode = HttpStatusCode.OK;
+                _apiResponse.Result = "Please reset password with the code that you received";
+                return Ok(_apiResponse);
+            }
+            _apiResponse.IsSuccess = false;
+            _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+            _apiResponse.Errors.Add("Something went wrong!");
+            return BadRequest(_apiResponse);
+        }
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword(RequestResetPasswordDTO request)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(request.Email);
+                if (user == null)
+                {
+                    _apiResponse.IsSuccess = false;
+                    _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                    _apiResponse.Result = "Invalid Input";
+                    return BadRequest(_apiResponse);
+                }
+                var result = await _userManager.ResetPasswordAsync(user, request.Token, request.Password);
+                if (result.Succeeded)
+                {
+                    _apiResponse.IsSuccess = true;
+                    _apiResponse.StatusCode=HttpStatusCode.OK;
+                    _apiResponse.Result = "Password reset is successfully";
+                    return Ok(_apiResponse);
+                }
+            }
+            _apiResponse.IsSuccess = false;
+            _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+            _apiResponse.Errors.Add("Something went wrong!");
+            return BadRequest(_apiResponse);
         }
     }
 }

@@ -8,5 +8,6 @@ namespace real_time_chat_web.Repository.IRepository
         Task<TokenDTO> Login(LoginRequestDTO loginRequestDTO);
         Task<UserDTO> Register(RegisterationRequestDTO registerationRequestDTO);
         Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO);
+        Task<ResponseTokenPasswordDTO> ForgotPassword(RequestForgotPasswordDTO request);
     }
 }

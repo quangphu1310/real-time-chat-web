@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>real_time_chat_web</RootNamespace>
+    <UserSecretsId>12799036-0a6d-408a-923d-29bc89586ab9</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

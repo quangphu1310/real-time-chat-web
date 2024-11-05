@@ -8,6 +8,7 @@ using real_time_chat_web.Data;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
+using real_time_chat_web.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -21,12 +22,15 @@ namespace real_time_chat_web.Repository
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IMapper _mapper;
         private readonly string secretKey;
+        private readonly IEmailService _emailService;
+
         public UserRepository(ApplicationDbContext db, IConfiguration configuration,
-            UserManager<ApplicationUser> userManager, IMapper mapper, RoleManager<IdentityRole> roleManager)
+            UserManager<ApplicationUser> userManager, IMapper mapper, RoleManager<IdentityRole> roleManager, IEmailService emailService)
         {
             _db = db;
             _userManager = userManager;
             _roleManager = roleManager;
+            _emailService = emailService;
             _mapper = mapper;
             secretKey = configuration.GetValue<string>("ApiSettings:Secret");
         }
@@ -95,6 +99,8 @@ namespace real_time_chat_web.Repository
                     await _userManager.AddToRoleAsync(user, registerationRequestDTO.Role);
                     //require email confirmation
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    //send code to email
+                    await _emailService.SendEmail(user.Email, "Email Confirmation", code);
                     //email functionality to send the code to the user
                     return new UserDTO
                     {

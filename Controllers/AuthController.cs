@@ -10,23 +10,23 @@ using System.Net;
 
 namespace real_time_chat_web.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class AuthController : ControllerBase
     {
-        private readonly IUserRepository _userRepo;
+        private readonly IAuthRepository _authRepo;
         private readonly UserManager<ApplicationUser> _userManager;
         private APIResponse _apiResponse; 
-        public UserController(IUserRepository userRepo, UserManager<ApplicationUser> userManager)
+        public AuthController(IAuthRepository authRepo, UserManager<ApplicationUser> userManager)
         {
-            _userRepo = userRepo;
+            _authRepo = authRepo;
             _userManager = userManager;
             _apiResponse = new APIResponse();
         }
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO loginRequestDTO)
         {
-            var tokenDTO = await _userRepo.Login(loginRequestDTO);
+            var tokenDTO = await _authRepo.Login(loginRequestDTO);
             if (string.IsNullOrEmpty(tokenDTO.AccessToken))
             {
                 _apiResponse.IsSuccess = false;
@@ -44,7 +44,7 @@ namespace real_time_chat_web.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterationRequestDTO requestDTO)
         {
-            bool isUnique = _userRepo.IsUniqueUser(requestDTO.UserName);
+            bool isUnique = _authRepo.IsUniqueUser(requestDTO.UserName);
             if (!isUnique)
             {
                 _apiResponse.IsSuccess = false;
@@ -54,7 +54,7 @@ namespace real_time_chat_web.Controllers
             }
             try
             {
-                var user = await _userRepo.Register(requestDTO);
+                var user = await _authRepo.Register(requestDTO);
                 if (user == null)
                 {
                     _apiResponse.IsSuccess = false;
@@ -80,7 +80,7 @@ namespace real_time_chat_web.Controllers
         {
             if (ModelState.IsValid)
             {
-                var tokenDTOResponse = await _userRepo.RefreshAccessToken(tokenDTO);
+                var tokenDTOResponse = await _authRepo.RefreshAccessToken(tokenDTO);
                 if (tokenDTOResponse == null || string.IsNullOrEmpty(tokenDTOResponse.AccessToken))
                 {
                     _apiResponse.IsSuccess = false;
@@ -98,7 +98,7 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Result = "Invalid Input";
             return BadRequest(_apiResponse);
         }
-        [HttpPost("EmailVerification")]
+        [HttpPost("email-verification")]
         public async Task<IActionResult> EmailVerification(string? email, string? code)
         {
             if (email == null || code == null)
@@ -130,11 +130,11 @@ namespace real_time_chat_web.Controllers
             return BadRequest(_apiResponse);
 
         }
-        [HttpPost("ForgotPassword")]
+        [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(RequestForgotPasswordDTO request)
         {
             if (ModelState.IsValid) {
-                var tokenResponse = await _userRepo.ForgotPassword(request);
+                var tokenResponse = await _authRepo.ForgotPassword(request);
                 if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.Token))
                 {
                     _apiResponse.IsSuccess = false;
@@ -152,7 +152,7 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Errors.Add("Something went wrong!");
             return BadRequest(_apiResponse);
         }
-        [HttpPost("ResetPassword")]
+        [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(RequestResetPasswordDTO request)
         {
             if (ModelState.IsValid)

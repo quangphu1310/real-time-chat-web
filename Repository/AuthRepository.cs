@@ -16,7 +16,7 @@ using System.Text;
 
 namespace real_time_chat_web.Repository
 {
-    public class UserRepository : IUserRepository
+    public class AuthRepository : IAuthRepository
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -25,7 +25,7 @@ namespace real_time_chat_web.Repository
         private readonly string secretKey;
         private readonly IEmailService _emailService;
 
-        public UserRepository(ApplicationDbContext db, IConfiguration configuration,
+        public AuthRepository(ApplicationDbContext db, IConfiguration configuration,
             UserManager<ApplicationUser> userManager, IMapper mapper, RoleManager<IdentityRole> roleManager, IEmailService emailService)
         {
             _db = db;

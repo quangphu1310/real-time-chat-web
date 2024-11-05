@@ -53,7 +53,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddDefaultTokenProviders();
 
 builder.Services.AddAutoMapper(typeof(MappingConfig));
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddTransient<IEmailService, EmailService>();
 
 var app = builder.Build();

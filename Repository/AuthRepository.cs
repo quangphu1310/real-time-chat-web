@@ -8,25 +8,30 @@ using real_time_chat_web.Data;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
+using real_time_chat_web.Services;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 
 namespace real_time_chat_web.Repository
 {
-    public class UserRepository : IUserRepository
+    public class AuthRepository : IAuthRepository
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IMapper _mapper;
         private readonly string secretKey;
-        public UserRepository(ApplicationDbContext db, IConfiguration configuration,
-            UserManager<ApplicationUser> userManager, IMapper mapper, RoleManager<IdentityRole> roleManager)
+        private readonly IEmailService _emailService;
+
+        public AuthRepository(ApplicationDbContext db, IConfiguration configuration,
+            UserManager<ApplicationUser> userManager, IMapper mapper, RoleManager<IdentityRole> roleManager, IEmailService emailService)
         {
             _db = db;
             _userManager = userManager;
             _roleManager = roleManager;
+            _emailService = emailService;
             _mapper = mapper;
             secretKey = configuration.GetValue<string>("ApiSettings:Secret");
         }
@@ -79,7 +84,6 @@ namespace real_time_chat_web.Repository
                 UserName = registerationRequestDTO.UserName,
                 Name = registerationRequestDTO.Name,
                 Email = registerationRequestDTO.UserName,
-                PhoneNumber = registerationRequestDTO.PhoneNumber,
                 NormalizedEmail = registerationRequestDTO.UserName.ToUpper()
             };
             try
@@ -87,7 +91,7 @@ namespace real_time_chat_web.Repository
                 var result = await _userManager.CreateAsync(user, registerationRequestDTO.Password);
                 if (result.Succeeded)
                 {
-                    
+
                     if (!_roleManager.RoleExistsAsync(registerationRequestDTO.Role).GetAwaiter().GetResult())
                     {
                         await _roleManager.CreateAsync(new IdentityRole(registerationRequestDTO.Role));
@@ -95,24 +99,27 @@ namespace real_time_chat_web.Repository
                     await _userManager.AddToRoleAsync(user, registerationRequestDTO.Role);
                     //require email confirmation
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    //send code to email
+                    await _emailService.SendEmail(user.Email, "Email Confirmation", code);
                     //email functionality to send the code to the user
                     return new UserDTO
                     {
                         UserName = user.UserName,
                         Email = user.Email,
-                        ConfirmationMessage = $"Please confirm your email with the code that you received: {code}"
+                        ConfirmationMessage = $"Please confirm your email with the code that you received!"
                     };
                 }
                 else
                 {
-                    var errors = result.Errors.Select(e => e.Description).ToList();
+                    // Display password errors
+                    string errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    throw new Exception(errors);
                 }
             }
             catch (Exception ex)
             {
-                throw ex; 
+                throw new Exception(ex.Message);
             }
-            return new UserDTO();
         }
         public async Task<string> GetAccessToken(ApplicationUser user, string jwtTokenId)
         {
@@ -221,5 +228,22 @@ namespace real_time_chat_web.Repository
             }
         }
 
+        public async Task<ResponseTokenPasswordDTO> ForgotPassword(RequestForgotPasswordDTO request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                return new ResponseTokenPasswordDTO();
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            if (string.IsNullOrEmpty(token))
+                return new ResponseTokenPasswordDTO();
+            //send email
+            await _emailService.SendEmail(user.Email, "Code to reset your password", token);
+
+            return new ResponseTokenPasswordDTO()
+            {
+                Email = user.Email,
+                Token = token
+            };
+        }
     }
 }

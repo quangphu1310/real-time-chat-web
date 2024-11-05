@@ -7,6 +7,7 @@ using real_time_chat_web.Data;
 using real_time_chat_web.Models;
 using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
+using real_time_chat_web.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,13 +47,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
     options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+    options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-
 builder.Services.AddAutoMapper(typeof(MappingConfig));
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddTransient<IEmailService, EmailService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

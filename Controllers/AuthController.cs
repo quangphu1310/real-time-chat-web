@@ -99,16 +99,16 @@ namespace real_time_chat_web.Controllers
             return BadRequest(_apiResponse);
         }
         [HttpPost("email-verification")]
-        public async Task<IActionResult> EmailVerification(string? email, string? code)
+        public async Task<IActionResult> EmailVerification(RequestEmailVerification request)
         {
-            if (email == null || code == null)
+            if (request.Email == null || request.Code == null)
             {
                 _apiResponse.IsSuccess = false;
                 _apiResponse.StatusCode = HttpStatusCode.BadRequest;
                 _apiResponse.Errors.Add("Invalid Input");
                 return BadRequest(_apiResponse);
             }
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
                 _apiResponse.IsSuccess = false;
@@ -116,7 +116,7 @@ namespace real_time_chat_web.Controllers
                 _apiResponse.Errors.Add("Invalid Input");
                 return BadRequest(_apiResponse);
             }
-            var isVerified = await _userManager.ConfirmEmailAsync(user, code);
+            var isVerified = await _userManager.ConfirmEmailAsync(user, request.Code);
             if (isVerified.Succeeded)
             {
                 _apiResponse.IsSuccess = true;

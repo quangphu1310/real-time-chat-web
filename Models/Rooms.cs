@@ -13,7 +13,7 @@ namespace real_time_chat_web.Models
         public bool IsActive { get; set; }
         public string Description { get; set; }
 
-        //[ForeignKey("CreatedBy")]
-        //public virtual ApplicationUser User { get; set; }
+        [ForeignKey("CreatedBy")]
+        public ApplicationUser User { get; set; }
     }
 }

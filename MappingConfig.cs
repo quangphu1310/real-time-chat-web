@@ -12,6 +12,7 @@ namespace real_time_chat_web
             CreateMap<ApplicationUser, ApplicationUserDTO>().ReverseMap();
             CreateMap<ApplicationUser, ApplicationUserCreateDTO>().ReverseMap();
             CreateMap<ApplicationUser, ApplicationUserUpdateDTO>().ReverseMap();
+            CreateMap<ApplicationUser, ApplicationUserProfileDTO>().ReverseMap();
         }
     }
 }

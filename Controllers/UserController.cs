@@ -2,7 +2,9 @@
 using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
@@ -10,25 +12,28 @@ using System.Net;
 
 namespace real_time_chat_web.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/user")]
     [ApiController]
-    [Authorize(Roles = "admin", AuthenticationSchemes ="Bearer")]
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepo;
         private readonly IMapper _mapper;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly APIResponse _response;
 
-        public UserController(IUserRepository userRepo, IMapper mapper)
+        public UserController(IUserRepository userRepo, IMapper mapper, UserManager<ApplicationUser> userManager)
         {
             _userRepo = userRepo;
             _mapper = mapper;
+            _userManager = userManager;
             _response = new APIResponse();
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+
         public async Task<ActionResult<APIResponse>> GetUsers([FromQuery] string? search)
         {
             try
@@ -58,6 +63,7 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> GetUserById(string id)
         {
             try
@@ -89,6 +95,7 @@ namespace real_time_chat_web.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> CreateUser([FromBody] ApplicationUserCreateDTO userDto)
         {
             try
@@ -131,6 +138,7 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> UpdateUser(string id, [FromBody] ApplicationUserUpdateDTO userDto)
         {
             try
@@ -172,6 +180,7 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> DeleteUser(string id)
         {
             try
@@ -207,6 +216,68 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
+        [HttpPut("change-profile")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<ActionResult<APIResponse>> ChangeProfile([FromForm] ApplicationUserProfileDTO userDto)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.Errors = new List<string> { "User not found" };
+                    return BadRequest(_response);
+                }
+
+                if (!string.IsNullOrEmpty(userDto.Name))
+                {
+                    user.Name = userDto.Name;
+                }
+                if (!string.IsNullOrEmpty(userDto.PhoneNumber))
+                {
+                    user.PhoneNumber = userDto.PhoneNumber;
+                }
+
+                if (userDto.Image != null)
+                {
+                    string fileName = user.Id + Path.GetExtension(userDto.Image.FileName);
+                    string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "ProfileImage");
+
+                    if (!Directory.Exists(directoryPath))
+                    {
+                        Directory.CreateDirectory(directoryPath);
+                    }
+
+                    string filePath = Path.Combine(directoryPath, fileName);
+
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        userDto.Image.CopyTo(fileStream);
+                    }
+
+                    var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
+                    user.ImageUrl = $"{baseUrl}/ProfileImage/{fileName}";
+                }
+
+                await _userRepo.UpdateAsync(user);
+                _response.StatusCode = HttpStatusCode.OK;
+                _response.IsSuccess = true;
+                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
+                return Ok(_response);
+            }
+            catch (Exception ex)
+            {
+                _response.IsSuccess = false;
+                _response.Errors = new List<string> { ex.Message };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                return BadRequest(_response);
+            }
+        }
+
 
     }
 

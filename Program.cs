@@ -118,7 +118,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseStaticFiles();
 // Thêm middleware CORS trước Authorization
 app.UseCors("AllowAllOrigins");
 

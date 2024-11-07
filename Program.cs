@@ -9,6 +9,7 @@ using real_time_chat_web.Repository;
 using real_time_chat_web.Services;
 using real_time_chat_web;
 using System.Text;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,8 +64,50 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IEmailService, EmailService>();
-
+builder.Services.AddSwaggerGen(o =>
+{
+    o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description =
+        "JWT Authorization header using the Bearer scheme. \r\n\r\n " +
+        "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
+         "Example: \"Bearer 12345abcdef\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Scheme = "Bearer"
+    });
+    o.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header
+            },
+            new List<string>()
+        }
+    });
+    o.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "real-time-chat-web V1",
+        Version = "v1.0",
+        Contact = new OpenApiContact
+        {
+            Email = "trancongquangphu10@gmail.com",
+            Name = "Tran Cong Quang Phu",
+            Url = new Uri("https://github.com/quangphu1310"),
+        }
+    });
+    
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

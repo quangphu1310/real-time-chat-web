@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Azure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using real_time_chat_web.Models;
@@ -11,6 +12,7 @@ namespace real_time_chat_web.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "admin", AuthenticationSchemes ="Bearer")]
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepo;

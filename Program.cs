@@ -8,16 +8,19 @@ using real_time_chat_web.Models;
 using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Services;
+using Microsoft.AspNetCore.SignalR;
 using System.Text;
+using real_time_chat_web.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// JWT Authentication Setup
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
 builder.Services.AddAuthentication(o =>
 {
@@ -35,14 +38,17 @@ builder.Services.AddAuthentication(o =>
         ValidateAudience = false
     };
 });
+
+// Add SignalR services
+builder.Services.AddSignalR();  
+
+// Add database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
-//builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
-//builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-//    options.SignIn.RequireConfirmedAccount = true)
-//.AddEntityFrameworkStores<ApplicationDbContext>();
+
+// Identity Setup
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
@@ -52,6 +58,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// AutoMapper and Dependency Injection
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddTransient<IEmailService, EmailService>();
@@ -67,9 +74,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();  // Ensure authentication middleware is added
 app.UseAuthorization();
 
-app.MapControllers();
+// Map SignalR hubs
+app.MapHub<ChatHub>("/chatHub"); // Map the SignalR hub to a route
 
+app.MapControllers();
 
 app.Run();

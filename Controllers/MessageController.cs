@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using real_time_chat_web.Data;
 using real_time_chat_web.Models;
+using real_time_chat_web.Models.DTO;
 
 namespace real_time_chat_web.Controllers
 {
@@ -13,10 +14,12 @@ namespace real_time_chat_web.Controllers
     public class MessagesController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-
-        public MessagesController(ApplicationDbContext db)
+        private readonly IMapper _mapper;
+        public MessagesController(ApplicationDbContext db, IMapper mapper)
         {
+
             _db = db;
+            _mapper = mapper;
         }
 
         [HttpGet("room/{roomId}")]
@@ -39,9 +42,11 @@ namespace real_time_chat_web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Messages>> CreateMessage(Messages message)
+        public async Task<ActionResult<MessageCreateDTO>> CreateMessage(MessageCreateDTO messagedto)
         {
-            message.SentAt = DateTime.UtcNow;
+            messagedto.SentAt = DateTime.UtcNow;
+
+            var message = _mapper.Map<Messages>(messagedto);
             _db.Messages.Add(message);
             await _db.SaveChangesAsync();
 

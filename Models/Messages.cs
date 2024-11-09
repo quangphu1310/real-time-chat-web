@@ -18,7 +18,6 @@ namespace real_time_chat_web.Models
         [ForeignKey("RoomId")]
         public Rooms Room { get; set; }
 
-        // Thêm cột IsRead
-        public bool IsRead { get; set; } = false; // Đặt mặc định là chưa đọc
+        public bool IsRead { get; set; } = false; 
     }
 }

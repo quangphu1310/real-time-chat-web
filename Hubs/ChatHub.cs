@@ -46,17 +46,17 @@ namespace real_time_chat_web.Hubs
             });
         }
 
-        // Tham gia room (group) với RoomId
-        public async Task JoinRoom(int roomId)
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-        }
+        //// Tham gia room (group) với RoomId
+        //public async Task JoinRoom(int roomId)
+        //{
+        //    await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+        //}
 
-        // Rời room
-        public async Task LeaveRoom(int roomId)
-        {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
-        }
+        //// Rời room
+        //public async Task LeaveRoom(int roomId)
+        //{
+        //    await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
+        //}
 
         // Đánh dấu tin nhắn là đã đọc
         public async Task MarkMessageAsRead(int messageId, string userId)

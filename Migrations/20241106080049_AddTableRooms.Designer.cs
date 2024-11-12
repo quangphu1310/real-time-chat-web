@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using real_time_chat_web.Data;
 
@@ -11,9 +12,11 @@ using real_time_chat_web.Data;
 namespace real_time_chat_web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241106080049_AddTableRooms")]
+    partial class AddTableRooms
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -165,7 +168,7 @@ namespace real_time_chat_web.Migrations
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -182,8 +185,6 @@ namespace real_time_chat_web.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("IdRooms");
-
-                    b.HasIndex("CreatedBy");
 
                     b.ToTable("ApplicationRooms");
                 });
@@ -337,17 +338,6 @@ namespace real_time_chat_web.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("real_time_chat_web.Models.ApplicationRooms", b =>
-                {
-                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

@@ -24,8 +24,11 @@ namespace real_time_chat_web.Controllers
             _apiResponse = new APIResponse();
         }
         [HttpPost("login")]
+
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO loginRequestDTO)
         {
+            loginRequestDTO.UserName = "tranvanluong131203@gmail.com";
+            loginRequestDTO.Password = "Phungu123@";
             var tokenDTO = await _authRepo.Login(loginRequestDTO);
             if (string.IsNullOrEmpty(tokenDTO.AccessToken))
             {

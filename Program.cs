@@ -10,7 +10,6 @@ using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Services;
 using Microsoft.AspNetCore.SignalR;
 using System.Text;
-using real_time_chat_web.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 

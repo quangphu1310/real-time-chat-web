@@ -9,8 +9,8 @@ namespace real_time_chat_web.Models
         public int MessageId { get; set; }
         public string Content { get; set; }
         public DateTime SentAt { get; set; }
-        public bool IsPinned { get; set; }
-        public string FileUrl { get; set; }
+        public bool IsPinned { get; set; } = false;
+        public string FileUrl { get; set; } 
         public string UserId { get; set; }
         [ForeignKey("UserId")]
         public ApplicationUser User { get; set; }

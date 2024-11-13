@@ -59,19 +59,19 @@ namespace real_time_chat_web.Controllers
         }
 
 
-        [HttpGet("{id}")]
+        [HttpGet("{username}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
-        public async Task<ActionResult<APIResponse>> GetUserById(string id)
+        public async Task<ActionResult<APIResponse>> GetUserByUserName(string username)
         {
             try
             {
-                if (string.IsNullOrEmpty(id))
+                if (string.IsNullOrEmpty(username))
                     return BadRequest();
 
-                var user = await _userRepo.GetAsync(x => x.Id == id);
+                var user = await _userRepo.GetAsync(x => x.UserName == username);
                 if (user == null)
                 {
                     _response.IsSuccess = false;
@@ -124,7 +124,7 @@ namespace real_time_chat_web.Controllers
                 _response.Result = _mapper.Map<ApplicationUserDTO>(user);
                 _response.StatusCode = HttpStatusCode.Created;
                 _response.IsSuccess = true;
-                return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, _response);
+                return CreatedAtAction(nameof(GetUserByUserName), new { id = user.Id }, _response);
             }
             catch (Exception ex)
             {

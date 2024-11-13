@@ -144,7 +144,7 @@ namespace real_time_chat_web.Repository
                     new Claim(JwtRegisteredClaimNames.Jti, jwtTokenId),
                     new Claim(JwtRegisteredClaimNames.Sub, user.Id)
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(2),
+                Expires = DateTime.UtcNow.AddDays(1),
                 SigningCredentials = new(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -211,7 +211,7 @@ namespace real_time_chat_web.Repository
                 JwtTokenId = jwtTokenId,
                 UserId = userId,
                 IsValid = true,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(2),
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
                 Refresh_Token = Guid.NewGuid() + "-" + Guid.NewGuid(),
             };
             await _db.RefreshTokens.AddAsync(refreshToken);

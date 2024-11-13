@@ -3,7 +3,7 @@ using real_time_chat_web.Models.DTO;
 
 namespace real_time_chat_web.Services.IServices
 {
-    public interface IServicesRooms
+    public interface IRoomsService
     {
         Task<APIResponse> GetAllRoomsAsync();
         Task<APIResponse> GetRoomAsync(int id);

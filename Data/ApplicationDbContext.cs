@@ -11,10 +11,10 @@ namespace real_time_chat_web.Data
         {}
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
-        public DbSet<ApplicationRooms> ApplicationRooms { get; set; }
+        public DbSet<Rooms> rooms { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            builder.Entity<ApplicationRooms>()
+            builder.Entity<Rooms>()
                .HasOne(rt => rt.User)
                .WithMany()
                .HasForeignKey(rt => rt.CreatedBy)

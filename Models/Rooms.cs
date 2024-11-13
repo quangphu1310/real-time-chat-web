@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace real_time_chat_web.Models
 {
-    public class ApplicationRooms
+    public class Rooms
     {
         [Key]
         public int IdRooms { get; set; }
@@ -14,6 +14,6 @@ namespace real_time_chat_web.Models
         public string Description { get; set; }
 
         [ForeignKey("CreatedBy")]
-        public virtual ApplicationUser User { get; set; }
+        public ApplicationUser User { get; set; }
     }
 }

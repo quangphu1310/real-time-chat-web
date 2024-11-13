@@ -1,31 +1,35 @@
-﻿using real_time_chat_web.Models;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
+using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Services.IServices;
+using System.Net;
 
 namespace real_time_chat_web.Services
 {
-    public class RoomsServices : IServicesRooms
+    public class RoomsServices : IRoomsService
     {
         private readonly IRoomsRepository _roomsRepository;
-        public RoomsServices(IRoomsRepository roomsRepository)
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IMapper _mapper;
+        public RoomsServices(IRoomsRepository roomsRepository, IMapper mapper, UserManager<ApplicationUser> userManager )
         {
             _roomsRepository = roomsRepository;
+            _mapper = mapper;
+            _userManager = userManager;
         }
+        
         public async Task<APIResponse> CreateRoomAsync(RoomsCreateDTO room)
         {
-            var newRoom = new ApplicationRooms
-            {
-                RoomName = room.RoomName,
-                Description = room.Description,
-                CreatedBy = room.CreatedBy,
-                CreatedDate = DateTime.Now,
-                IsActive = true
-            };
-            await _roomsRepository.CreateAsync(newRoom);
+            var newRoom = _mapper.Map<Rooms>(room);
+
+            await _roomsRepository.CreateRoomsAsync(newRoom);
             return new APIResponse
             {
-                StatusCode = System.Net.HttpStatusCode.OK,
+                StatusCode = HttpStatusCode.OK,
                 IsSuccess = true,
                 Result = newRoom
             };
@@ -38,7 +42,7 @@ namespace real_time_chat_web.Services
             {
                 return new APIResponse
                 {
-                    StatusCode = System.Net.HttpStatusCode.NotFound,
+                    StatusCode = HttpStatusCode.NotFound,
                     IsSuccess = false,
                     Errors = new List<string> { "Room not found" }
                 };
@@ -46,39 +50,39 @@ namespace real_time_chat_web.Services
             await _roomsRepository.RemoveAsync(room);
             return new APIResponse
             {
-                StatusCode = System.Net.HttpStatusCode.OK,
+                StatusCode = HttpStatusCode.OK,
                 IsSuccess = true
             };
         }
 
         public async Task<APIResponse> GetRoomAsync(int id)
         {
-            var room = _roomsRepository.GetAsync(n => n.IdRooms == id);
+            var room = await _roomsRepository.GetAsync(n => n.IdRooms == id);
             if(room == null)
             {
 
                return new APIResponse
                 {
-                    StatusCode = System.Net.HttpStatusCode.NotFound,
+                    StatusCode = HttpStatusCode.NotFound,
                     IsSuccess = false,
                     Errors = new List<string> { "Room not found" }
                 };
             }
-            
+
             return new APIResponse
             {
                 StatusCode = System.Net.HttpStatusCode.OK,
                 IsSuccess = true,
-                Result = await _roomsRepository.GetAsync(n => n.IdRooms == id)
-            };
+                Result = room
+            }; 
         }
 
         public async Task<APIResponse> GetAllRoomsAsync()
         {
-            await _roomsRepository.GetAllAsync();
+            
             return new APIResponse
             {
-                StatusCode = System.Net.HttpStatusCode.OK,
+                StatusCode = HttpStatusCode.OK,
                 IsSuccess = true,
                 Result = await _roomsRepository.GetAllAsync()
             };
@@ -89,7 +93,12 @@ namespace real_time_chat_web.Services
             var existingRoom = await _roomsRepository.GetAsync(r => r.IdRooms == id);
             if (existingRoom == null)
             {
-                return new APIResponse { IsSuccess = false, Errors = new List<string> { "Room not found." } };
+                return new APIResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    IsSuccess = false,
+                    Errors = new List<string> { "Room not found." }
+                };
             }
 
             existingRoom.RoomName = room.RoomName;
@@ -97,7 +106,11 @@ namespace real_time_chat_web.Services
             existingRoom.IsActive = room.IsActive;
 
             var updatedRoom = await _roomsRepository.UpdateRoomsAsync(existingRoom);
-            return new APIResponse { IsSuccess = true, Result = updatedRoom };
+            return new APIResponse 
+            { 
+                IsSuccess = true, 
+                Result = updatedRoom 
+            };
 
         }
     }

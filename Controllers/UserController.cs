@@ -124,7 +124,7 @@ namespace real_time_chat_web.Controllers
                 _response.Result = _mapper.Map<ApplicationUserDTO>(user);
                 _response.StatusCode = HttpStatusCode.Created;
                 _response.IsSuccess = true;
-                return CreatedAtAction(nameof(GetUserByUserName), new { id = user.Id }, _response);
+                return CreatedAtAction(nameof(GetUserByUserName), new { username = user.UserName }, _response);
             }
             catch (Exception ex)
             {

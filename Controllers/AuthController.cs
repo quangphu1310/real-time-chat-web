@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +28,9 @@ namespace real_time_chat_web.Controllers
 
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO loginRequestDTO)
         {
-            loginRequestDTO.UserName = "tranvanluong131203@gmail.com";
-            loginRequestDTO.Password = "Phungu123@";
+          
+            //loginRequestDTO.UserName = "trancongquangphu10@gmail.com";
+            //loginRequestDTO.Password = "Quangphu1310@";
             var tokenDTO = await _authRepo.Login(loginRequestDTO);
             if (string.IsNullOrEmpty(tokenDTO.AccessToken))
             {
@@ -102,16 +104,16 @@ namespace real_time_chat_web.Controllers
             return BadRequest(_apiResponse);
         }
         [HttpPost("email-verification")]
-        public async Task<IActionResult> EmailVerification(string? email, string? code)
+        public async Task<IActionResult> EmailVerification(RequestEmailVerification request)
         {
-            if (email == null || code == null)
+            if (request.Email == null || request.Code == null)
             {
                 _apiResponse.IsSuccess = false;
                 _apiResponse.StatusCode = HttpStatusCode.BadRequest;
                 _apiResponse.Errors.Add("Invalid Input");
                 return BadRequest(_apiResponse);
             }
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
                 _apiResponse.IsSuccess = false;
@@ -119,7 +121,7 @@ namespace real_time_chat_web.Controllers
                 _apiResponse.Errors.Add("Invalid Input");
                 return BadRequest(_apiResponse);
             }
-            var isVerified = await _userManager.ConfirmEmailAsync(user, code);
+            var isVerified = await _userManager.ConfirmEmailAsync(user, request.Code);
             if (isVerified.Succeeded)
             {
                 _apiResponse.IsSuccess = true;
@@ -182,5 +184,52 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Errors.Add("Something went wrong!");
             return BadRequest(_apiResponse);
         }
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDTO request)
+        {
+            if (!ModelState.IsValid)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("Invalid input.");
+                return BadRequest(_apiResponse);
+            }
+
+            if (request.NewPassword != request.ConfirmPassword)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("New password and confirm password do not match.");
+                return BadRequest(_apiResponse);
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("User not found.");
+                return BadRequest(_apiResponse);
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                foreach (var error in result.Errors)
+                {
+                    _apiResponse.Errors.Add(error.Description);
+                }
+                return BadRequest(_apiResponse);
+            }
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = "Password changed successfully.";
+            return Ok(_apiResponse);
+        }
+
     }
 }

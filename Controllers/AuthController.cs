@@ -25,6 +25,7 @@ namespace real_time_chat_web.Controllers
             _apiResponse = new APIResponse();
         }
         [HttpPost("login")]
+
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO loginRequestDTO)
         {
             loginRequestDTO.UserName = "trancongquangphu10@gmail.com";

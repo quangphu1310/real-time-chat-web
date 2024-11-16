@@ -24,24 +24,25 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // JWT Authentication Setup
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
 
 // Cấu hình CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllOrigins", policy =>
+    options.AddPolicy("AllowSpecificOrigins", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("https://localhost:3000")  // URL của frontend
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();  // Cho phép gửi cookie nếu cần
     });
 });
+
+
 
 builder.Services.AddAuthentication(o =>
 {
@@ -60,18 +61,14 @@ builder.Services.AddAuthentication(o =>
     };
 });
 
-
 // Add SignalR services
-builder.Services.AddSignalR();  
+builder.Services.AddSignalR();
 
 // Add database context
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
-
-
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -87,6 +84,8 @@ builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IEmailService, EmailService>();
+
+// Swagger Configuration
 builder.Services.AddSwaggerGen(o =>
 {
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -127,8 +126,8 @@ builder.Services.AddSwaggerGen(o =>
             Url = new Uri("https://github.com/quangphu1310"),
         }
     });
-    
 });
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -140,19 +139,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-// Thêm middleware CORS trước Authorization
+
+// Thêm middleware CORS trước Authentication và Authorization
 app.UseCors("AllowAllOrigins");
 
-
-
-
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 // Map SignalR hubs
 app.MapHub<ChatHub>("/chatHub"); // Map the SignalR hub to a route
-
 
 app.MapControllers();
 

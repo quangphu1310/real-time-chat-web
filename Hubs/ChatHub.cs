@@ -1,48 +1,44 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using real_time_chat_web.Models.DTO;
-using real_time_chat_web.Data;
-using System.Threading.Tasks;
 using real_time_chat_web.Models;
+using System.Text.RegularExpressions;
 
 public class ChatHub : Hub
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IRoomService _roomService;
 
-    public ChatHub(ApplicationDbContext db)
+    public ChatHub(IRoomService roomService)
     {
-        _db = db;
+        _roomService = roomService;
     }
 
-    public async Task SendMessageToRoom(int roomId, string messageContent, string userName)
+    public async Task SendMessage(string roomId, string message)
     {
-        var message = new Messages
+        // Add message to database, potentially pinning it if required
+        var msg = new Messages { RoomId = roomId, Content = message, UserId = Context.UserIdentifier };
+        await _roomService.AddMessageAsync(msg);
+
+        // Broadcast message to room
+        await Clients.Group(roomId).SendAsync("ReceiveMessage", message);
+    }
+
+    public async Task JoinRoom(string roomId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
+    }
+
+    public async Task LeaveRoom(string roomId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
+    }
+
+    // Method to delete message for Moderators
+    public async Task DeleteMessage(string messageId)
+    {
+        var message = await _roomService.GetMessageByIdAsync(messageId);
+        if (message != null && (Context.User.IsInRole("Admin") || Context.User.IsInRole("Moderate")))
         {
-            RoomId = roomId,
-            Content = messageContent,
-            SentAt = DateTime.UtcNow
-        };
-
-        _db.Messages.Add(message);
-        await _db.SaveChangesAsync();
-
-        // Gửi tin nhắn tới tất cả client trong phòng chat
-        await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", new
-        {
-            messageId = message.MessageId,
-            content = message.Content,
-            sentAt = message.SentAt
-        });
-    }
-
-    // Tham gia phòng chat
-    public async Task JoinRoom(int roomId)
-    {
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-    }
-
-    // Rời khỏi phòng chat
-    public async Task LeaveRoom(int roomId)
-    {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
+            await _roomService.DeleteMessageAsync(message);
+            await Clients.All.SendAsync("MessageDeleted", messageId);
+        }
     }
 }

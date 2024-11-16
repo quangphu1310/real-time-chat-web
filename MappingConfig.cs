@@ -15,12 +15,11 @@ namespace real_time_chat_web
 
             CreateMap<Messages, MessageGetDTO>().ReverseMap();
 
-            CreateMap<Messages, MessageReadStatusDTO>().ReverseMap();
 
 
             CreateMap<Messages, MessageCreateDTO>().ReverseMap();
 
-            CreateMap<Messages, MessageUpdateDTO>().ReverseMap();
+
 
             CreateMap<ApplicationUser, ApplicationUserDTO>().ReverseMap();
             CreateMap<ApplicationUser, ApplicationUserCreateDTO>().ReverseMap();

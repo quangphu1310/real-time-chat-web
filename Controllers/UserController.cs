@@ -123,7 +123,6 @@ namespace real_time_chat_web.Controllers
                     return BadRequest(_response);
                 }
 
-                // Kiểm tra xem người dùng có tồn tại dựa trên email/UserName không
                 var existingUser = await _userRepo.GetAsync(u => u.Email == userDto.UserName);
                 if (existingUser != null)
                 {
@@ -135,23 +134,13 @@ namespace real_time_chat_web.Controllers
 
                 var user = _mapper.Map<ApplicationUser>(userDto);
 
-                // Thêm người dùng mới vào cơ sở dữ liệu
-                var createResult = await _userManager.CreateAsync(user);
-                if (!createResult.Succeeded)
-                {
-                    _response.IsSuccess = false;
-                    _response.StatusCode = HttpStatusCode.BadRequest;
-                    _response.Errors = createResult.Errors.Select(e => e.Description).ToList();
-                    return BadRequest(_response);
-                }
+                await _userRepo.CreateAsync(user);
 
-                // Kiểm tra và thêm role nếu cần thiết
                 if (!string.IsNullOrEmpty(userDto.Role))
                 {
                     var roleExists = await _roleManager.RoleExistsAsync(userDto.Role);
                     if (!roleExists)
                     {
-                        // Nếu role chưa tồn tại, tạo mới
                         var roleCreateResult = await _roleManager.CreateAsync(new IdentityRole(userDto.Role));
                         if (!roleCreateResult.Succeeded)
                         {
@@ -162,7 +151,6 @@ namespace real_time_chat_web.Controllers
                         }
                     }
 
-                    // Gán role cho người dùng
                     var roleAssignResult = await _userManager.AddToRoleAsync(user, userDto.Role);
                     if (!roleAssignResult.Succeeded)
                     {
@@ -173,12 +161,10 @@ namespace real_time_chat_web.Controllers
                     }
                 }
 
-                // Lấy role hiện tại của người dùng để đưa vào DTO
                 var userRoles = await _userManager.GetRolesAsync(user);
                 var userDTO = _mapper.Map<ApplicationUserDTO>(user);
                 userDTO.Role = userRoles.FirstOrDefault();
 
-                // Trả về phản hồi
                 _response.Result = userDTO;
                 _response.StatusCode = HttpStatusCode.Created;
                 _response.IsSuccess = true;
@@ -187,7 +173,6 @@ namespace real_time_chat_web.Controllers
             }
             catch (Exception ex)
             {
-                // Xử lý lỗi chung
                 _response.IsSuccess = false;
                 _response.Errors = new List<string> { ex.Message };
                 return BadRequest(_response);
@@ -212,7 +197,6 @@ namespace real_time_chat_web.Controllers
                     return BadRequest(_response);
                 }
 
-                // Kiểm tra xem người dùng có tồn tại hay không
                 var existingUser = await _userRepo.GetAsync(u => u.Id == id);
                 if (existingUser == null)
                 {
@@ -222,21 +206,13 @@ namespace real_time_chat_web.Controllers
                     return NotFound(_response);
                 }
 
-                // Cập nhật thông tin cơ bản
                 _mapper.Map(userDto, existingUser);
-                var updateResult = await _userManager.UpdateAsync(existingUser);
-                if (!updateResult.Succeeded)
-                {
-                    _response.IsSuccess = false;
-                    _response.StatusCode = HttpStatusCode.BadRequest;
-                    _response.Errors = updateResult.Errors.Select(e => e.Description).ToList();
-                    return BadRequest(_response);
-                }
 
-                // Kiểm tra và xử lý vai trò mới (nếu có)
+                await _userRepo.UpdateAsync(existingUser);
+
+
                 if (!string.IsNullOrEmpty(userDto.Role))
                 {
-                    // Kiểm tra role có tồn tại không, nếu không thì tạo mới
                     var roleExists = await _roleManager.RoleExistsAsync(userDto.Role);
                     if (!roleExists)
                     {
@@ -250,11 +226,9 @@ namespace real_time_chat_web.Controllers
                         }
                     }
 
-                    // Lấy danh sách role hiện tại và cập nhật nếu cần thiết
                     var currentRoles = await _userManager.GetRolesAsync(existingUser);
                     if (!currentRoles.Contains(userDto.Role))
                     {
-                        // Loại bỏ tất cả vai trò hiện tại
                         var removeRolesResult = await _userManager.RemoveFromRolesAsync(existingUser, currentRoles);
                         if (!removeRolesResult.Succeeded)
                         {
@@ -264,7 +238,6 @@ namespace real_time_chat_web.Controllers
                             return BadRequest(_response);
                         }
 
-                        // Gán vai trò mới
                         var addRoleResult = await _userManager.AddToRoleAsync(existingUser, userDto.Role);
                         if (!addRoleResult.Succeeded)
                         {
@@ -276,10 +249,8 @@ namespace real_time_chat_web.Controllers
                     }
                 }
 
-                // Lấy lại thông tin vai trò cập nhật
                 var userRoles = await _userManager.GetRolesAsync(existingUser);
 
-                // Chuẩn bị dữ liệu để trả về
                 var userDTO = _mapper.Map<ApplicationUserDTO>(existingUser);
                 userDTO.Role = userRoles.FirstOrDefault();
 

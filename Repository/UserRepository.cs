@@ -23,6 +23,7 @@ namespace real_time_chat_web.Repository
             await _userManager.AddPasswordAsync(entity, "Abc123@");
             entity.NormalizedEmail = entity.UserName.ToUpper();
             entity.Email = entity.UserName;
+            entity.EmailConfirmed = true;
             _db.ApplicationUsers.Add(entity);
             await _db.SaveChangesAsync();
             return entity;

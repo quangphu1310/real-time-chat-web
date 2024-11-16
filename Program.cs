@@ -7,16 +7,28 @@ using real_time_chat_web.Models;
 using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Repository;
 using real_time_chat_web.Services;
+using Microsoft.AspNetCore.SignalR;
+
 using real_time_chat_web;
+
 using System.Text;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// JWT Authentication Setup
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
 
@@ -48,10 +60,18 @@ builder.Services.AddAuthentication(o =>
     };
 });
 
+
+// Add SignalR services
+builder.Services.AddSignalR();  
+
+// Add database context
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -62,6 +82,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// AutoMapper and Dependency Injection
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -122,8 +143,16 @@ app.UseStaticFiles();
 // Thêm middleware CORS trước Authorization
 app.UseCors("AllowAllOrigins");
 
+
+
+
 app.UseAuthentication();
+
 app.UseAuthorization();
+
+// Map SignalR hubs
+app.MapHub<ChatHub>("/chatHub"); // Map the SignalR hub to a route
+
 
 app.MapControllers();
 

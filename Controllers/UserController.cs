@@ -19,13 +19,15 @@ namespace real_time_chat_web.Controllers
         private readonly IUserRepository _userRepo;
         private readonly IMapper _mapper;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly APIResponse _response;
 
-        public UserController(IUserRepository userRepo, IMapper mapper, UserManager<ApplicationUser> userManager)
+        public UserController(IUserRepository userRepo, IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userRepo = userRepo;
             _mapper = mapper;
             _userManager = userManager;
+            _roleManager = roleManager;
             _response = new APIResponse();
         }
 
@@ -33,19 +35,30 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
-
         public async Task<ActionResult<APIResponse>> GetUsers([FromQuery] string? search)
         {
             try
             {
-                IEnumerable<ApplicationUser> users;
+                var users = string.IsNullOrEmpty(search)
+                    ? await _userManager.Users.ToListAsync()
+                    : await _userManager.Users.Where(c => c.UserName.Contains(search)).ToListAsync();
 
-                if (!string.IsNullOrEmpty(search))
-                    users = await _userRepo.GetAllAsync(x => x.UserName.Contains(search));
-                else
-                    users = await _userRepo.GetAllAsync();
+                var userDTOs = new List<ApplicationUserDTO>();
 
-                _response.Result = _mapper.Map<List<ApplicationUserDTO>>(users);
+                foreach (var user in users)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    userDTOs.Add(new ApplicationUserDTO
+                    {
+                        Id = user.Id,
+                        Name = user.Name,
+                        UserName = user.UserName,
+                        EmailConfirmed = user.EmailConfirmed.ToString(),
+                        Role = string.Join(",", roles)
+                    });
+                }
+
+                _response.Result = userDTOs;
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 return Ok(_response);
@@ -57,6 +70,7 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
+
 
 
         [HttpGet("{username}")]
@@ -79,8 +93,9 @@ namespace real_time_chat_web.Controllers
                     _response.Errors = new List<string>() { "User not found" };
                     return NotFound(_response);
                 }
-
-                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
+                var userDto = _mapper.Map<ApplicationUserDTO>(user);
+                userDto.Role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
+                _response.Result = userDto;
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 return Ok(_response);
@@ -121,9 +136,39 @@ namespace real_time_chat_web.Controllers
 
                 await _userRepo.CreateAsync(user);
 
-                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
+                if (!string.IsNullOrEmpty(userDto.Role))
+                {
+                    var roleExists = await _roleManager.RoleExistsAsync(userDto.Role);
+                    if (!roleExists)
+                    {
+                        var roleCreateResult = await _roleManager.CreateAsync(new IdentityRole(userDto.Role));
+                        if (!roleCreateResult.Succeeded)
+                        {
+                            _response.IsSuccess = false;
+                            _response.StatusCode = HttpStatusCode.BadRequest;
+                            _response.Errors = roleCreateResult.Errors.Select(e => e.Description).ToList();
+                            return BadRequest(_response);
+                        }
+                    }
+
+                    var roleAssignResult = await _userManager.AddToRoleAsync(user, userDto.Role);
+                    if (!roleAssignResult.Succeeded)
+                    {
+                        _response.IsSuccess = false;
+                        _response.StatusCode = HttpStatusCode.BadRequest;
+                        _response.Errors = roleAssignResult.Errors.Select(e => e.Description).ToList();
+                        return BadRequest(_response);
+                    }
+                }
+
+                var userRoles = await _userManager.GetRolesAsync(user);
+                var userDTO = _mapper.Map<ApplicationUserDTO>(user);
+                userDTO.Role = userRoles.FirstOrDefault();
+
+                _response.Result = userDTO;
                 _response.StatusCode = HttpStatusCode.Created;
                 _response.IsSuccess = true;
+
                 return CreatedAtAction(nameof(GetUserByUserName), new { username = user.UserName }, _response);
             }
             catch (Exception ex)
@@ -133,6 +178,7 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
+
 
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -164,7 +210,51 @@ namespace real_time_chat_web.Controllers
 
                 await _userRepo.UpdateAsync(existingUser);
 
-                _response.Result = _mapper.Map<ApplicationUserDTO>(existingUser);
+
+                if (!string.IsNullOrEmpty(userDto.Role))
+                {
+                    var roleExists = await _roleManager.RoleExistsAsync(userDto.Role);
+                    if (!roleExists)
+                    {
+                        var roleCreateResult = await _roleManager.CreateAsync(new IdentityRole(userDto.Role));
+                        if (!roleCreateResult.Succeeded)
+                        {
+                            _response.IsSuccess = false;
+                            _response.StatusCode = HttpStatusCode.BadRequest;
+                            _response.Errors = roleCreateResult.Errors.Select(e => e.Description).ToList();
+                            return BadRequest(_response);
+                        }
+                    }
+
+                    var currentRoles = await _userManager.GetRolesAsync(existingUser);
+                    if (!currentRoles.Contains(userDto.Role))
+                    {
+                        var removeRolesResult = await _userManager.RemoveFromRolesAsync(existingUser, currentRoles);
+                        if (!removeRolesResult.Succeeded)
+                        {
+                            _response.IsSuccess = false;
+                            _response.StatusCode = HttpStatusCode.BadRequest;
+                            _response.Errors = removeRolesResult.Errors.Select(e => e.Description).ToList();
+                            return BadRequest(_response);
+                        }
+
+                        var addRoleResult = await _userManager.AddToRoleAsync(existingUser, userDto.Role);
+                        if (!addRoleResult.Succeeded)
+                        {
+                            _response.IsSuccess = false;
+                            _response.StatusCode = HttpStatusCode.BadRequest;
+                            _response.Errors = addRoleResult.Errors.Select(e => e.Description).ToList();
+                            return BadRequest(_response);
+                        }
+                    }
+                }
+
+                var userRoles = await _userManager.GetRolesAsync(existingUser);
+
+                var userDTO = _mapper.Map<ApplicationUserDTO>(existingUser);
+                userDTO.Role = userRoles.FirstOrDefault();
+
+                _response.Result = userDTO;
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 return Ok(_response);
@@ -176,6 +266,8 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
+
+
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

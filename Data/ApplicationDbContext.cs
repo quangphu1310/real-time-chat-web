@@ -16,8 +16,6 @@ namespace real_time_chat_web.Data
         public DbSet<RoomsUser> RoomsUser { get; set; }
         public DbSet<Messages> Messages { get; set; }
 
-        public DbSet<MessageReadStatus> MessageReadStatuses { get; set; }
-
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<Rooms>()

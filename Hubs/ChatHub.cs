@@ -1,48 +1,86 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Data;
-using System.Threading.Tasks;
 using real_time_chat_web.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-public class ChatHub : Hub
+namespace real_time_chat_web.Hubs
 {
-    private readonly ApplicationDbContext _db;
-
-    public ChatHub(ApplicationDbContext db)
+    public class ChatHub : Hub
     {
-        _db = db;
-    }
+        private readonly ApplicationDbContext _context;  
+        private readonly IDictionary<string, UserConnection> _connections;
 
-    public async Task SendMessageToRoom(int roomId, string messageContent, string userName)
-    {
-        var message = new Messages
+        public ChatHub(ApplicationDbContext context, IDictionary<string, UserConnection> connections)
         {
-            RoomId = roomId,
-            Content = messageContent,
-            SentAt = DateTime.UtcNow
-        };
+            _context = context;
+            _connections = connections;
+        }
 
-        _db.Messages.Add(message);
-        await _db.SaveChangesAsync();
-
-        // Gửi tin nhắn tới tất cả client trong phòng chat
-        await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", new
+        public override Task OnDisconnectedAsync(Exception exception)
         {
-            messageId = message.MessageId,
-            content = message.Content,
-            sentAt = message.SentAt
-        });
-    }
+            if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
+            {
+                _connections.Remove(Context.ConnectionId);
+                Clients.Group(userConnection.RoomId.ToString()).SendAsync("ReceiveMessage", "MyChat Bot", $"{userConnection.UserId} has left");
+                SendUsersConnected(userConnection.RoomId);
+            }
 
-    // Tham gia phòng chat
-    public async Task JoinRoom(int roomId)
-    {
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-    }
+            return base.OnDisconnectedAsync(exception);
+        }
 
-    // Rời khỏi phòng chat
-    public async Task LeaveRoom(int roomId)
-    {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
+        public async Task JoinRoom(int roomId, string userId)
+        {
+            var userConnection = new UserConnection(Context.ConnectionId, userId, roomId);
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+            _connections[Context.ConnectionId] = userConnection;
+            await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", "MyChat Bot", $"{userId} has joined the room");
+
+            await SendUsersConnected(roomId);
+        }
+
+        public async Task SendMessage(string message)
+        {
+            if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
+            {
+                var newMessage = new Messages
+                {
+                    Content = message,
+                    SentAt = DateTime.Now,
+                    IsPinned = false,
+                    UserId = userConnection.UserId,
+                    RoomId = userConnection.RoomId,
+                    IsRead = false,
+                    FileUrl = "" 
+                };
+
+                _context.Messages.Add(newMessage);
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await Clients.Group(userConnection.RoomId.ToString()).SendAsync("ReceiveMessage", userConnection.UserId, message);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error saving message: {ex.Message}");
+                    await Clients.Caller.SendAsync("Error", "An error occurred while sending the message.");
+                }
+            }
+        }
+
+
+        public Task SendUsersConnected(int roomId)
+        {
+            var users = _connections.Values
+                .Where(c => c.RoomId == roomId)
+                .Select(c => c.UserId);
+
+            return Clients.Group(roomId.ToString()).SendAsync("UsersInRoom", users);
+        }
     }
 }
+

@@ -7,44 +7,40 @@ using real_time_chat_web.Models;
 using real_time_chat_web.Repository.IRepository;
 using real_time_chat_web.Repository;
 using real_time_chat_web.Services;
-using Microsoft.AspNetCore.SignalR;
-
-using real_time_chat_web;
-
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System.Text;
 using Microsoft.OpenApi.Models;
 using real_time_chat_web.Services.IServices;
+using System.Collections.Generic;
+using real_time_chat_web;
+using real_time_chat_web.Hubs;
 using real_time_chat_web.DBInitializer;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllersWithViews();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // JWT Authentication Setup
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
 
-// Cấu hình CORS
+// Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllOrigins", policy =>
+    options.AddPolicy("AllowSpecificOrigin", builder =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        builder.WithOrigins("http://localhost:3000") // Only allow specific origin
+               .AllowAnyHeader() // Allow all headers
+               .AllowAnyMethod() // Allow all methods (GET, POST, PUT, DELETE, etc.)
+               .AllowCredentials(); // Allow credentials like cookies or authorization headers
     });
 });
 
+// Configure JWT Authentication
 builder.Services.AddAuthentication(o =>
 {
     o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -62,19 +58,13 @@ builder.Services.AddAuthentication(o =>
     };
 });
 
-
-// Add SignalR services
-builder.Services.AddSignalR();  
-
 // Add database context
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-
-
+// Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
@@ -84,7 +74,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// AutoMapper and Dependency Injection
+// Configure AutoMapper and Dependency Injection
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -98,9 +88,9 @@ builder.Services.AddSwaggerGen(o =>
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description =
-        "JWT Authorization header using the Bearer scheme. \r\n\r\n " +
-        "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
-         "Example: \"Bearer 12345abcdef\"",
+            "JWT Authorization header using the Bearer scheme. \r\n\r\n " +
+            "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
+            "Example: \"Bearer 12345abcdef\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Scheme = "Bearer"
@@ -133,11 +123,15 @@ builder.Services.AddSwaggerGen(o =>
             Url = new Uri("https://github.com/quangphu1310"),
         }
     });
-    
 });
+
+// SignalR setup
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IDictionary<string, UserConnection>>(opts => new Dictionary<string, UserConnection>());
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -146,21 +140,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-// Thêm middleware CORS trước Authorization
-app.UseCors("AllowAllOrigins");
 
-
-
+// Add middleware for CORS before Authorization
+app.UseCors("AllowSpecificOrigin");
 
 app.UseAuthentication();
-
 app.UseAuthorization();
-
-// Map SignalR hubs
-app.MapHub<ChatHub>("/chatHub"); // Map the SignalR hub to a route
 
 SeedDatabase();
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<ChatHub>("/chat");
 
 app.Run();
 void SeedDatabase()

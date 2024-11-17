@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using real_time_chat_web.Hubs;
+using real_time_chat_web.Migrations;
+using System.Net;
+using AutoMapper;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -16,23 +19,59 @@ public class MessageController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IMapper _mapper;
+    private APIResponse _apiResponse;
 
-    public MessageController(ApplicationDbContext context, IHubContext<ChatHub> hubContext)
+
+    public MessageController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IMapper mapper)
     {
         _context = context;
         _hubContext = hubContext;
+        _mapper = mapper;
+        _apiResponse = new APIResponse();
     }
 
     // Lấy danh sách tin nhắn của một phòng
     [HttpGet("room/{roomId}")]
-    public async Task<ActionResult<IEnumerable<Messages>>> GetMessages(int roomId)
-    {
-        var messages = await _context.Messages
-            .Where(m => m.RoomId == roomId)
-            .OrderBy(m => m.SentAt)
-            .ToListAsync();
+    //public async Task<ActionResult<IEnumerable<Messages>>> GetMessages(int roomId)
+    //{
+    //    var messages = await _context.Messages
+    //        .Where(m => m.RoomId == roomId)
+    //        .OrderBy(m => m.SentAt)
+    //        .ToListAsync();
 
-        return Ok(messages);
+    //    return Ok(messages);
+    //}
+    public async Task<ActionResult<APIResponse>> GetMessagesByRoom(int roomId)
+    {
+        try
+        {
+            var messages = await _context.Messages
+                .Where(m => m.RoomId == roomId)
+                .Include(m => m.User)
+                .ToListAsync();
+
+            if (messages == null || messages.Count == 0)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("No messages found for this room");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+
+            var messageDtos = _mapper.Map<IEnumerable<MessageGetDTO>>(messages);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = messageDtos;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error fetching messages: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
     }
 
     // Gửi tin nhắn mới và lưu vào database
@@ -45,7 +84,9 @@ public class MessageController : ControllerBase
             SentAt = DateTime.Now,
             UserId = messageDto.UserId,
             RoomId = messageDto.RoomId,
-            IsRead = false
+            IsRead = false,
+            FileUrl = ""
+
         };
 
         _context.Messages.Add(message);

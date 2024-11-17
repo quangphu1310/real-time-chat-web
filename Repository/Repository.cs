@@ -71,9 +71,12 @@ namespace real_time_chat_web.Repository
             DbSet.Remove(entity);
             await SaveAsync();
         }
+
         public async Task SaveAsync()
         {
             await _db.SaveChangesAsync();
         }
+
+       
     }
 }

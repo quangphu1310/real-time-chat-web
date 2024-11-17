@@ -10,8 +10,9 @@ namespace real_time_chat_web.Models.DTO
         public bool IsPinned { get; set; }
         public string FileUrl { get; set; }
         public string UserId { get; set; }
-        public string Userame { get; set; } 
+        public ApplicationUser User { get; set; } 
         public int RoomId { get; set; }
+        public Rooms Room { get; set; }
         public bool IsRead { get; set; }
     }
 }

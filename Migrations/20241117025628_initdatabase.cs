@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace real_time_chat_web.Migrations
 {
     /// <inheritdoc />
-    public partial class updateDB : Migration
+    public partial class initdatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,6 +31,7 @@ namespace real_time_chat_web.Migrations
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -175,7 +176,7 @@ namespace real_time_chat_web.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Rooms",
+                name: "rooms",
                 columns: table => new
                 {
                     IdRooms = table.Column<int>(type: "int", nullable: false)
@@ -188,13 +189,13 @@ namespace real_time_chat_web.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Rooms", x => x.IdRooms);
+                    table.PrimaryKey("PK_rooms", x => x.IdRooms);
                     table.ForeignKey(
-                        name: "FK_Rooms_AspNetUsers_CreatedBy",
+                        name: "FK_rooms_AspNetUsers_CreatedBy",
                         column: x => x.CreatedBy,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -208,7 +209,8 @@ namespace real_time_chat_web.Migrations
                     IsPinned = table.Column<bool>(type: "bit", nullable: false),
                     FileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    RoomId = table.Column<int>(type: "int", nullable: false)
+                    RoomId = table.Column<int>(type: "int", nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -220,11 +222,70 @@ namespace real_time_chat_web.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Messages_Rooms_RoomId",
+                        name: "FK_Messages_rooms_RoomId",
                         column: x => x.RoomId,
-                        principalTable: "Rooms",
+                        principalTable: "rooms",
                         principalColumn: "IdRooms",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RoomsUser",
+                columns: table => new
+                {
+                    IdRooms = table.Column<int>(type: "int", nullable: false),
+                    IdUser = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    IdPerAdd = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    DayAdd = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RoomsUser", x => new { x.IdRooms, x.IdUser });
+                    table.ForeignKey(
+                        name: "FK_RoomsUser_AspNetUsers_IdPerAdd",
+                        column: x => x.IdPerAdd,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_RoomsUser_AspNetUsers_IdUser",
+                        column: x => x.IdUser,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_RoomsUser_rooms_IdRooms",
+                        column: x => x.IdRooms,
+                        principalTable: "rooms",
+                        principalColumn: "IdRooms",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MessageReadStatuses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MessageId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MessageReadStatuses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MessageReadStatuses_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_MessageReadStatuses_Messages_MessageId",
+                        column: x => x.MessageId,
+                        principalTable: "Messages",
+                        principalColumn: "MessageId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -267,6 +328,16 @@ namespace real_time_chat_web.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MessageReadStatuses_MessageId",
+                table: "MessageReadStatuses",
+                column: "MessageId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MessageReadStatuses_UserId",
+                table: "MessageReadStatuses",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Messages_RoomId",
                 table: "Messages",
                 column: "RoomId");
@@ -277,9 +348,19 @@ namespace real_time_chat_web.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Rooms_CreatedBy",
-                table: "Rooms",
+                name: "IX_rooms_CreatedBy",
+                table: "rooms",
                 column: "CreatedBy");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RoomsUser_IdPerAdd",
+                table: "RoomsUser",
+                column: "IdPerAdd");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RoomsUser_IdUser",
+                table: "RoomsUser",
+                column: "IdUser");
         }
 
         /// <inheritdoc />
@@ -301,16 +382,22 @@ namespace real_time_chat_web.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Messages");
+                name: "MessageReadStatuses");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
+                name: "RoomsUser");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "Rooms");
+                name: "Messages");
+
+            migrationBuilder.DropTable(
+                name: "rooms");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

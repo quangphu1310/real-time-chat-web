@@ -5,18 +5,18 @@
 namespace real_time_chat_web.Migrations
 {
     /// <inheritdoc />
-    public partial class updateMessage : Migration
+    public partial class db : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "IsRead",
-                table: "Messages",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.DropTable(
+                name: "MessageReadStatuses");
+        }
 
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
             migrationBuilder.CreateTable(
                 name: "MessageReadStatuses",
                 columns: table => new
@@ -53,17 +53,6 @@ namespace real_time_chat_web.Migrations
                 name: "IX_MessageReadStatuses_UserId",
                 table: "MessageReadStatuses",
                 column: "UserId");
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropTable(
-                name: "MessageReadStatuses");
-
-            migrationBuilder.DropColumn(
-                name: "IsRead",
-                table: "Messages");
         }
     }
 }

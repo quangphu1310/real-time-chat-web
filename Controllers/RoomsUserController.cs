@@ -10,7 +10,7 @@ using System.Net;
 
 namespace real_time_chat_web.Controllers
 {
-    [Route("api/add-user-in-room")]
+    [Route("api/Rooms-User")]
     [ApiController]
     
     public class RoomsUserController : ControllerBase
@@ -27,7 +27,7 @@ namespace real_time_chat_web.Controllers
             _apiResponse = new APIResponse();
         }
 
-        [HttpPost]
+        [HttpPost("add-user-in-room")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [Authorize(Roles = "mod", AuthenticationSchemes = "Bearer")]
@@ -69,7 +69,7 @@ namespace real_time_chat_web.Controllers
                 return Ok(_apiResponse);
         }
 
-        [HttpDelete]
+        [HttpDelete("remove-user-out-room")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [Authorize(Roles = "mod", AuthenticationSchemes = "Bearer")]

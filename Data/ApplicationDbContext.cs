@@ -47,26 +47,26 @@ namespace real_time_chat_web.Data
                 .HasForeignKey(r => r.IdPerAdd)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            base.OnModelCreating(builder);
-            builder.Entity<Rooms>()
-   .HasOne(rt => rt.User)
-   .WithMany()
-   .HasForeignKey(rt => rt.CreatedBy)
-    .OnDelete(DeleteBehavior.Restrict);
+            //base.OnModelCreating(builder);
+            //builder.Entity<Rooms>()
+            //   .HasOne(rt => rt.User)
+            //   .WithMany()
+            //   .HasForeignKey(rt => rt.CreatedBy)
+            //    .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(builder);
             builder.Entity<Messages>()
-   .HasOne(rt => rt.User)
-   .WithMany()
-   .HasForeignKey(rt => rt.UserId)
-    .OnDelete(DeleteBehavior.Restrict);
+               .HasOne(rt => rt.User)
+               .WithMany()
+               .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(builder);
             builder.Entity<Messages>()
-   .HasOne(rt => rt.Room)
-   .WithMany()
-   .HasForeignKey(rt => rt.RoomId)
-    .OnDelete(DeleteBehavior.Restrict);
+               .HasOne(rt => rt.Room)
+               .WithMany()
+               .HasForeignKey(rt => rt.RoomId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

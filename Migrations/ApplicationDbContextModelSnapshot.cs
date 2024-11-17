@@ -356,7 +356,6 @@ namespace real_time_chat_web.Migrations
 
                     b.HasIndex("CreatedBy");
 
-
                     b.ToTable("rooms");
                 });
 
@@ -382,9 +381,6 @@ namespace real_time_chat_web.Migrations
                     b.HasIndex("IdUser");
 
                     b.ToTable("RoomsUser");
-
-                    
-
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -438,42 +434,6 @@ namespace real_time_chat_web.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("real_time_chat_web.Models.Rooms", b =>
-                {
-                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("real_time_chat_web.Models.RoomsUser", b =>
-                {
-                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "PerUser")
-                        .WithMany()
-                        .HasForeignKey("IdPerAdd")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("real_time_chat_web.Models.Rooms", "Rooms")
-                        .WithMany()
-                        .HasForeignKey("IdRooms")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("IdUser")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("PerUser");
-
-                    b.Navigation("Rooms");
-
-
             modelBuilder.Entity("real_time_chat_web.Models.MessageReadStatus", b =>
                 {
                     b.HasOne("real_time_chat_web.Models.Messages", "Message")
@@ -512,8 +472,44 @@ namespace real_time_chat_web.Migrations
                     b.Navigation("User");
                 });
 
-            
+            modelBuilder.Entity("real_time_chat_web.Models.Rooms", b =>
+                {
+                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("real_time_chat_web.Models.RoomsUser", b =>
+                {
+                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "PerUser")
+                        .WithMany()
+                        .HasForeignKey("IdPerAdd")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("real_time_chat_web.Models.Rooms", "Rooms")
+                        .WithMany()
+                        .HasForeignKey("IdRooms")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("IdUser")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PerUser");
+
+                    b.Navigation("Rooms");
+
+                    b.Navigation("User");
+                });
 #pragma warning restore 612, 618
         }
-    } 
+    }
 }

@@ -7,6 +7,7 @@ using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
+using real_time_chat_web.Services;
 using System.Net;
 
 namespace real_time_chat_web.Controllers
@@ -17,16 +18,21 @@ namespace real_time_chat_web.Controllers
     {
         private readonly IAuthRepository _authRepo;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailService _emailService;
         private APIResponse _apiResponse; 
-        public AuthController(IAuthRepository authRepo, UserManager<ApplicationUser> userManager)
+        public AuthController(IAuthRepository authRepo, UserManager<ApplicationUser> userManager, IEmailService emailService)
         {
             _authRepo = authRepo;
             _userManager = userManager;
+            _emailService = emailService;
             _apiResponse = new APIResponse();
         }
         [HttpPost("login")]
+
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO loginRequestDTO)
         {
+            loginRequestDTO.UserName = "trancongquangphu10@gmail.com";
+            loginRequestDTO.Password = "Quangphu1310@";
             var tokenDTO = await _authRepo.Login(loginRequestDTO);
             if (string.IsNullOrEmpty(tokenDTO.AccessToken))
             {
@@ -226,6 +232,31 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Result = "Password changed successfully.";
             return Ok(_apiResponse);
         }
+        [HttpPost("resend-email-verification")]
+        public async Task<IActionResult> ResendEmailVerification(string email)
+        {
+            if (email == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("Invalid Input");
+                return BadRequest(_apiResponse);
+            }
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.Errors.Add("Invalid Input");
+                return BadRequest(_apiResponse);
+            }
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            await _emailService.SendEmail(user.Email, "Email Confirmation", code);
 
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = "Verification email sent successfully";
+            return Ok(_apiResponse);
+        }
     }
 }

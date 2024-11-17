@@ -9,14 +9,27 @@ namespace real_time_chat_web
         public MappingConfig()
         {
             CreateMap<ApplicationUser, UserDTO>().ReverseMap();
+
+
+            CreateMap<Messages, MessageGetIdRoomDTO>().ReverseMap();
+
+            CreateMap<Messages, MessageGetDTO>().ReverseMap();
+
+            CreateMap<Messages, MessageReadStatusDTO>().ReverseMap();
+
+
+            CreateMap<Messages, MessageCreateDTO>().ReverseMap();
+
+            CreateMap<Messages, MessageUpdateDTO>().ReverseMap();
+
             CreateMap<ApplicationUser, ApplicationUserDTO>().ReverseMap();
             CreateMap<ApplicationUser, ApplicationUserCreateDTO>().ReverseMap();
             CreateMap<ApplicationUser, ApplicationUserUpdateDTO>().ReverseMap();
             CreateMap<ApplicationUser, ApplicationUserProfileDTO>().ReverseMap();
+
             CreateMap<Rooms, RoomsUpdateDTO>().ReverseMap();
             CreateMap<Rooms, RoomsCreateDTO>().ReverseMap();
             CreateMap<RoomsUser, RoomsUserCreateDTO>().ReverseMap();
-
 
         }
     }

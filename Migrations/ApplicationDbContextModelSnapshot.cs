@@ -356,7 +356,31 @@ namespace real_time_chat_web.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.ToTable("Rooms");
+                    b.ToTable("rooms");
+                });
+
+            modelBuilder.Entity("real_time_chat_web.Models.RoomsUser", b =>
+                {
+                    b.Property<int>("IdRooms")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IdUser")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("DayAdd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IdPerAdd")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("IdRooms", "IdUser");
+
+                    b.HasIndex("IdPerAdd");
+
+                    b.HasIndex("IdUser");
+
+                    b.ToTable("RoomsUser");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -453,8 +477,35 @@ namespace real_time_chat_web.Migrations
                     b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("real_time_chat_web.Models.RoomsUser", b =>
+                {
+                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "PerUser")
+                        .WithMany()
+                        .HasForeignKey("IdPerAdd")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("real_time_chat_web.Models.Rooms", "Rooms")
+                        .WithMany()
+                        .HasForeignKey("IdRooms")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("IdUser")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PerUser");
+
+                    b.Navigation("Rooms");
 
                     b.Navigation("User");
                 });

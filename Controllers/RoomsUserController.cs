@@ -95,5 +95,26 @@ namespace real_time_chat_web.Controllers
             return Ok(_apiResponse);
 
         }
+
+        [HttpGet("{IdRooms}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetAllUsersInRoom(int IdRooms)
+        {
+            var users = await _repository.GetRoomsUserAsync(IdRooms);
+
+            if (users == null || users.Count == 0)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                _apiResponse.Errors.Add("No users found in the specified room.");
+                return NotFound(_apiResponse);
+            }
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = users;
+            return Ok(_apiResponse);
+        }
     }
 }

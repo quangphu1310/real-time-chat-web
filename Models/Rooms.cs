@@ -17,5 +17,6 @@ namespace real_time_chat_web.Models
 
         [ForeignKey("CreatedBy")]
         public ApplicationUser User { get; set; }
+        public ICollection<RoomsUser> RoomsUsers { get; set; }
     }
 }

@@ -4,6 +4,8 @@ using real_time_chat_web.Data;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
+using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace real_time_chat_web.Repository
@@ -35,6 +37,18 @@ namespace real_time_chat_web.Repository
             RoomsUser user = await _db.RoomsUser.FirstOrDefaultAsync(n => n.IdUser == entity.IdUser && n.IdRooms == entity.IdRooms);
             _db.RoomsUser.Remove(user);
             await SaveAsync();
+        }
+
+        public async Task<List<ApplicationUser>> GetRoomsUserAsync(int IdRooms)
+        {
+            var users = await _db.RoomsUser
+                .Where(r => r.IdRooms == IdRooms)
+                .Include(r => r.User)
+                .Select(r => r.User)
+                .ToListAsync();
+
+            return users;
+
         }
 
         public async Task SaveAsync()

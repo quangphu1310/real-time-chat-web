@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using real_time_chat_web.Models;
+using System.Reflection.Emit;
 
 namespace real_time_chat_web.Data
 {
@@ -25,6 +26,11 @@ namespace real_time_chat_web.Data
                .WithMany()
                .HasForeignKey(rt => rt.CreatedBy)
                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Rooms>()
+                .HasMany(r => r.RoomsUsers)
+                .WithOne(ru => ru.Rooms)
+                .HasForeignKey(ru => ru.IdRooms);
 
             builder.Entity<RoomsUser>()
     .HasKey(r => new { r.IdRooms, r.IdUser });

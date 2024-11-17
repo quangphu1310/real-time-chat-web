@@ -16,6 +16,7 @@ using real_time_chat_web.Services.IServices;
 using System.Collections.Generic;
 using real_time_chat_web;
 using real_time_chat_web.Hubs;
+using real_time_chat_web.DBInitializer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,8 +82,7 @@ builder.Services.AddTransient<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomsRepository, RoomsRepository>();
 builder.Services.AddScoped<IRoomsService, RoomsServices>();
 builder.Services.AddScoped<IRoomsUserRepository, RoomsUserRepository>();
-
-// Configure Swagger
+builder.Services.AddScoped<IDBInitializer, DBInitializer>();
 builder.Services.AddSwaggerGen(o =>
 {
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -147,10 +147,18 @@ app.UseCors("AllowSpecificOrigin");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map controllers
+SeedDatabase();
 app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<ChatHub>("/chat");
 
 app.Run();
+void SeedDatabase()
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbInitializer = scope.ServiceProvider.GetRequiredService<IDBInitializer>();
+        dbInitializer.Initialize();
+    }
+}

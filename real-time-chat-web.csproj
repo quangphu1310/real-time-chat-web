@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\Message\" />
+    <Folder Include="wwwroot\Messages\" />
     <Folder Include="wwwroot\ProfileImage\" />
   </ItemGroup>
 

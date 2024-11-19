@@ -308,67 +308,67 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
-        [HttpPut("change-profile")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(AuthenticationSchemes = "Bearer")]
-        public async Task<ActionResult<APIResponse>> ChangeProfile([FromForm] ApplicationUserProfileDTO userDto)
-        {
-            try
+            [HttpPut("change-profile")]
+            [ProducesResponseType(StatusCodes.Status200OK)]
+            [ProducesResponseType(StatusCodes.Status400BadRequest)]
+            [Authorize(AuthenticationSchemes = "Bearer")]
+            public async Task<ActionResult<APIResponse>> ChangeProfile([FromForm] ApplicationUserProfileDTO userDto)
             {
-                var user = await _userManager.GetUserAsync(User);
-                if (user == null)
+                try
+                {
+                    var user = await _userManager.GetUserAsync(User);
+                    if (user == null)
+                    {
+                        _response.IsSuccess = false;
+                        _response.StatusCode = HttpStatusCode.BadRequest;
+                        _response.Errors = new List<string> { "User not found" };
+                        return BadRequest(_response);
+                    }
+
+                    if (!string.IsNullOrEmpty(userDto.Name))
+                    {
+                        user.Name = userDto.Name;
+                    }
+                    if (!string.IsNullOrEmpty(userDto.PhoneNumber))
+                    {
+                        user.PhoneNumber = userDto.PhoneNumber;
+                    }
+
+                    if (userDto.Image != null)
+                    {
+                        string fileName = user.Id + Path.GetExtension(userDto.Image.FileName);
+                        string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "ProfileImage");
+
+                        if (!Directory.Exists(directoryPath))
+                        {
+                            Directory.CreateDirectory(directoryPath);
+                        }
+
+                        string filePath = Path.Combine(directoryPath, fileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            userDto.Image.CopyTo(fileStream);
+                        }
+
+                        var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
+                        user.ImageUrl = $"{baseUrl}/ProfileImage/{fileName}";
+                    }
+
+                    await _userRepo.UpdateAsync(user);
+                    _response.StatusCode = HttpStatusCode.OK;
+                    _response.IsSuccess = true;
+                    _response.Result = _mapper.Map<ApplicationUserDTO>(user);
+                    return Ok(_response);
+                }
+                catch (Exception ex)
                 {
                     _response.IsSuccess = false;
+                    _response.Errors = new List<string> { ex.Message };
                     _response.StatusCode = HttpStatusCode.BadRequest;
-                    _response.Errors = new List<string> { "User not found" };
                     return BadRequest(_response);
                 }
-
-                if (!string.IsNullOrEmpty(userDto.Name))
-                {
-                    user.Name = userDto.Name;
-                }
-                if (!string.IsNullOrEmpty(userDto.PhoneNumber))
-                {
-                    user.PhoneNumber = userDto.PhoneNumber;
-                }
-
-                if (userDto.Image != null)
-                {
-                    string fileName = user.Id + Path.GetExtension(userDto.Image.FileName);
-                    string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "ProfileImage");
-
-                    if (!Directory.Exists(directoryPath))
-                    {
-                        Directory.CreateDirectory(directoryPath);
-                    }
-
-                    string filePath = Path.Combine(directoryPath, fileName);
-
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
-                    {
-                        userDto.Image.CopyTo(fileStream);
-                    }
-
-                    var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-                    user.ImageUrl = $"{baseUrl}/ProfileImage/{fileName}";
-                }
-
-                await _userRepo.UpdateAsync(user);
-                _response.StatusCode = HttpStatusCode.OK;
-                _response.IsSuccess = true;
-                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
-                return Ok(_response);
             }
-            catch (Exception ex)
-            {
-                _response.IsSuccess = false;
-                _response.Errors = new List<string> { ex.Message };
-                _response.StatusCode = HttpStatusCode.BadRequest;
-                return BadRequest(_response);
-            }
-        }
 
 
     }

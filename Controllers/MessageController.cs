@@ -1,52 +1,67 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using real_time_chat_web.Data;
-using real_time_chat_web.Models;
-using real_time_chat_web.Models.DTO;
-using System;
-using Microsoft.AspNetCore.SignalR;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using real_time_chat_web.Hubs;
-using real_time_chat_web.Migrations;
-using System.Net;
+﻿
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using real_time_chat_web.Data;
+using real_time_chat_web.Models.DTO;
+using real_time_chat_web.Models;
+using System.Net;
+using Microsoft.EntityFrameworkCore;
 
-[Route("api/[controller]")]
 [ApiController]
-public class MessageController : ControllerBase
+[Route("api/[controller]")]
+public class MessagesController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IHubContext<ChatHub> _hubContext;
+    private readonly ApplicationDbContext _db;
     private readonly IMapper _mapper;
     private APIResponse _apiResponse;
 
-
-    public MessageController(ApplicationDbContext context, IHubContext<ChatHub> hubContext, IMapper mapper)
+    public MessagesController(ApplicationDbContext db, IMapper mapper)
     {
-        _context = context;
-        _hubContext = hubContext;
+        _db = db;
         _mapper = mapper;
         _apiResponse = new APIResponse();
     }
+    [HttpGet("{id}")]
+    //[Authorize( AuthenticationSchemes = "Bearer")]
+    public async Task<ActionResult<APIResponse>> GetMessage(int id)
+    {
+        try
+        {
+            var message = await _db.Messages
+                .Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.MessageId == id);
 
-    // Lấy danh sách tin nhắn của một phòng
+            if (message == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("Message not found");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+
+            var messageDto = _mapper.Map<MessageGetDTO>(message);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = messageDto;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error fetching message: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
+    }
+    //Get messages by room
     [HttpGet("room/{roomId}")]
-    //public async Task<ActionResult<IEnumerable<Messages>>> GetMessages(int roomId)
-    //{
-    //    var messages = await _context.Messages
-    //        .Where(m => m.RoomId == roomId)
-    //        .OrderBy(m => m.SentAt)
-    //        .ToListAsync();
-
-    //    return Ok(messages);
-    //}
+    //[Authorize( AuthenticationSchemes = "Bearer")]
     public async Task<ActionResult<APIResponse>> GetMessagesByRoom(int roomId)
     {
         try
         {
-            var messages = await _context.Messages
+            var messages = await _db.Messages
                 .Where(m => m.RoomId == roomId)
                 .Include(m => m.User)
                 .ToListAsync();
@@ -74,59 +89,130 @@ public class MessageController : ControllerBase
         }
     }
 
-    // Gửi tin nhắn mới và lưu vào database
-    [HttpPost("send")]
-    public async Task<ActionResult<Messages>> SendMessage([FromBody] MessageCreateDTO messageDto)
+    //Send a message
+    [HttpPost]
+    //[Authorize(AuthenticationSchemes = "Bearer")]
+    public async Task<IActionResult> SendMessage([FromBody] MessageCreateDTO messageDto)
     {
-        var message = new Messages
+        try
         {
-            Content = messageDto.Content,
-            SentAt = DateTime.Now,
-            UserId = messageDto.UserId,
-            RoomId = messageDto.RoomId,
-            IsRead = false,
-            FileUrl = ""
+            messageDto.SentAt = DateTime.UtcNow;
 
-        };
+            var message = _mapper.Map<Messages>(messageDto);
+            message.IsPinned = false; 
 
-        _context.Messages.Add(message);
-        await _context.SaveChangesAsync();
+            _db.Messages.Add(message);
+            await _db.SaveChangesAsync();
 
-        // Thông báo tin nhắn mới cho các người dùng trong phòng thông qua SignalR
-        await _hubContext.Clients.Group(message.RoomId.ToString()).SendAsync("ReceiveMessage", messageDto.UserId, messageDto.Content);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = _mapper.Map<MessageGetDTO>(message);
+            _apiResponse.StatusCode = HttpStatusCode.Created;
 
-        return CreatedAtAction("GetMessages", new { roomId = message.RoomId }, message);
+            return CreatedAtAction(nameof(GetMessage), new { id = message.MessageId }, _apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error creating message: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
     }
 
-    // Ghim tin nhắn
-    [HttpPost("pin/{messageId}")]
-    public async Task<ActionResult<Messages>> PinMessage(int messageId)
+    //Pin or Unpin a message
+    [HttpPut("pin/{messageId}")]
+    //[Authorize(AuthenticationSchemes = "Bearer")]
+    public async Task<IActionResult> PinMessage(int messageId, [FromQuery] bool isPinned)
     {
-        var message = await _context.Messages.FindAsync(messageId);
-        if (message == null)
+        try
         {
-            return NotFound();
+            var message = await _db.Messages.FindAsync(messageId);
+            if (message == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("Message not found");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+
+            message.IsPinned = isPinned;
+            await _db.SaveChangesAsync();
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
         }
-
-        message.IsPinned = true;
-        await _context.SaveChangesAsync();
-
-        return Ok(message);
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error pinning message: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
     }
 
-    // Xóa tin nhắn
-    [HttpDelete("delete/{messageId}")]
-    public async Task<ActionResult> DeleteMessage(int messageId)
+    //Mark a message as read
+    [HttpPut("read/{messageId}")]
+    //[Authorize(AuthenticationSchemes = "Bearer")]
+    public async Task<IActionResult> MarkAsRead(int messageId)
     {
-        var message = await _context.Messages.FindAsync(messageId);
-        if (message == null)
+        try
         {
-            return NotFound();
+            var message = await _db.Messages.FindAsync(messageId);
+            if (message == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("Message not found");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+
+            message.IsRead = true;
+            await _db.SaveChangesAsync();
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
         }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error marking message as read: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
+    }
 
-        _context.Messages.Remove(message);
-        await _context.SaveChangesAsync();
+    //Delete a message(for moderators and admins only)
+    [HttpDelete("{messageId}")]
+    [Authorize(Roles = "admin,mod", AuthenticationSchemes = "Bearer")]
+    public async Task<IActionResult> DeleteMessage(int messageId)
+    {
+        try
+        {
+            var message = await _db.Messages.FindAsync(messageId);
+            if (message == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("Message not found");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
 
-        return NoContent();
+            _db.Messages.Remove(message);
+            await _db.SaveChangesAsync();
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error deleting message: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
     }
 }

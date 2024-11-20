@@ -54,6 +54,7 @@ namespace real_time_chat_web.Controllers
                         Name = user.Name,
                         UserName = user.UserName,
                         EmailConfirmed = user.EmailConfirmed.ToString(),
+                        PhoneNumber = user.PhoneNumber,
                         Role = string.Join(",", roles)
                     });
                 }

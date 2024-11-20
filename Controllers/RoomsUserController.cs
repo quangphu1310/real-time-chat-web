@@ -30,7 +30,7 @@ namespace real_time_chat_web.Controllers
         [HttpPost("add-user-in-room")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "mod", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> CreateRoomsUser([FromBody] RoomsUserCreateDTO CreRoomUser)
         {
             
@@ -72,7 +72,7 @@ namespace real_time_chat_web.Controllers
         [HttpDelete("remove-user-out-room")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "mod", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> DeleteRoomsUser([FromBody] RoomsUserDeleteDTO DeleteRoomsUser)
         {
             if (DeleteRoomsUser == null || DeleteRoomsUser.IdUser == null || DeleteRoomsUser.IdUser.Count == 0 || DeleteRoomsUser.IdRooms <= 0)
@@ -99,6 +99,7 @@ namespace real_time_chat_web.Controllers
         [HttpGet("{IdRooms}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> GetAllUsersInRoom(int IdRooms)
         {
             var users = await _repository.GetRoomsUserAsync(IdRooms);

@@ -77,7 +77,7 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+        [Authorize( AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> GetUserByUserName(string username)
         {
             try

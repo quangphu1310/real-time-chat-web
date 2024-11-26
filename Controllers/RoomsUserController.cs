@@ -116,5 +116,24 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Result = users;
             return Ok(_apiResponse);
         }
+
+        [HttpGet("rooms-by-user/{Name}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> GetRoomsByUser(string Name)
+        {
+            var rooms = await _repository.GetRoomsByUserAsync(Name);
+            if (rooms == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                _apiResponse.Errors = new List<string>();
+            }
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = rooms;
+            return Ok(_apiResponse);
+        }
     }
 }

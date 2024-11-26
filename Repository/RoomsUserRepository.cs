@@ -56,5 +56,22 @@ namespace real_time_chat_web.Repository
             _db.SaveChanges();
         }
 
+
+        public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string user)
+        {
+            var rooms = await _db.RoomsUser
+                .Where(ru => ru.IdUser == user) 
+                .Include(ru => ru.Rooms)  
+                .Select(ru => new RoomsDTO
+                {
+                    Description = ru.Rooms.Description,
+                    IdRooms = ru.IdRooms,
+                    CreatedDate = ru.Rooms.CreatedDate,
+                    IsActive = ru.Rooms.IsActive,
+                    RoomName = ru.Rooms.RoomName,
+                })
+                .ToListAsync();
+            return rooms;
+        }
     }
 }

@@ -57,10 +57,10 @@ namespace real_time_chat_web.Repository
         }
 
 
-        public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string Name)
+        public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string user)
         {
             var rooms = await _db.RoomsUser
-                .Where(ru => ru.User.Name == Name) 
+                .Where(ru => ru.IdUser == user) 
                 .Include(ru => ru.Rooms)  
                 .Select(ru => new RoomsDTO
                 {

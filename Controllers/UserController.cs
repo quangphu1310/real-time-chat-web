@@ -34,7 +34,7 @@ namespace real_time_chat_web.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> GetUsers([FromQuery] string? search)
         {
             try

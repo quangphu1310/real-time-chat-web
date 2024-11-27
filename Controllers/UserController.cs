@@ -5,8 +5,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using real_time_chat_web.Data;
+using real_time_chat_web.Migrations;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
+using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
 using System.Net;
 
@@ -21,14 +24,18 @@ namespace real_time_chat_web.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly APIResponse _response;
+        private readonly ApplicationDbContext _db;
+        private readonly IRoomsUserRepository _roomsUserRepo;
 
-        public UserController(IUserRepository userRepo, IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UserController(IUserRepository userRepo, IRoomsUserRepository roomsUserRepo, ApplicationDbContext db,IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userRepo = userRepo;
             _mapper = mapper;
             _userManager = userManager;
             _roleManager = roleManager;
             _response = new APIResponse();
+            _db = db;
+            _roomsUserRepo = roomsUserRepo;
         }
 
         [HttpGet]
@@ -295,9 +302,19 @@ namespace real_time_chat_web.Controllers
                     _response.Errors = new List<string> { "User not found" };
                     return NotFound(_response);
                 }
+                
+                var listMessages = _db.Messages.Where(x => x.UserId == user.Id).ToList();
+                _db.RemoveRange(listMessages);
+
+                var listRooms = _db.rooms.Where(x => x.CreatedBy == user.Id).ToList();
+                _db.RemoveRange(listRooms);
+
+                var listUserRooms = _db.RoomsUser.Where(x => x.IdUser == user.Id).ToList();
+                _db.RemoveRange(listUserRooms);
+
 
                 await _userRepo.RemoveAsync(user);
-
+                
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 _response.Result = $"User with ID {id} has been successfully deleted.";

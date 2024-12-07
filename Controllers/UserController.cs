@@ -353,6 +353,37 @@ namespace real_time_chat_web.Controllers
                     user.PhoneNumber = userDto.PhoneNumber;
                 }
 
+                await _userRepo.UpdateAsync(user);
+                _response.StatusCode = HttpStatusCode.OK;
+                _response.IsSuccess = true;
+                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
+                return Ok(_response);
+            }
+            catch (Exception ex)
+            {
+                _response.IsSuccess = false;
+                _response.Errors = new List<string> { ex.Message };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                return BadRequest(_response);
+            }
+        }
+        [HttpPut("change-image-profile")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<ActionResult<APIResponse>> ChangeImageProfile([FromForm] ApplicationUserImageProfileDTO userDto)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
+                {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.Errors = new List<string> { "User not found" };
+                    return BadRequest(_response);
+                }
+
                 if (userDto.Image != null)
                 {
                     string fileName = Guid.NewGuid().ToString() + Path.GetExtension(userDto.Image.FileName);

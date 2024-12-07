@@ -355,7 +355,7 @@ namespace real_time_chat_web.Controllers
 
                 if (userDto.Image != null)
                 {
-                    string fileName = user.Id + Path.GetExtension(userDto.Image.FileName);
+                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(userDto.Image.FileName);
                     string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "ProfileImage");
 
                     if (!Directory.Exists(directoryPath))
@@ -367,7 +367,7 @@ namespace real_time_chat_web.Controllers
 
                     using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
-                        userDto.Image.CopyTo(fileStream);
+                        await userDto.Image.CopyToAsync(fileStream);
                     }
 
                     var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
@@ -388,8 +388,6 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
-
-
     }
 
 }

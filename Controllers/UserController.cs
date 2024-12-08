@@ -1,10 +1,13 @@
 ﻿using AutoMapper;
 using Azure;
+using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using real_time_chat_web.Data;
 using real_time_chat_web.Migrations;
 using real_time_chat_web.Models;
@@ -26,8 +29,9 @@ namespace real_time_chat_web.Controllers
         private readonly APIResponse _response;
         private readonly ApplicationDbContext _db;
         private readonly IRoomsUserRepository _roomsUserRepo;
+        private readonly IConfiguration _configuration;
 
-        public UserController(IUserRepository userRepo, IRoomsUserRepository roomsUserRepo, ApplicationDbContext db,IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UserController(IUserRepository userRepo,IConfiguration configuration, IRoomsUserRepository roomsUserRepo, ApplicationDbContext db,IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userRepo = userRepo;
             _mapper = mapper;
@@ -36,6 +40,7 @@ namespace real_time_chat_web.Controllers
             _response = new APIResponse();
             _db = db;
             _roomsUserRepo = roomsUserRepo;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -386,23 +391,18 @@ namespace real_time_chat_web.Controllers
 
                 if (userDto.Image != null)
                 {
-                    string fileName = Guid.NewGuid().ToString() + Path.GetExtension(userDto.Image.FileName);
-                    string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "ProfileImage");
+                    var cloudinary = new Cloudinary(new Account(
+                        cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+                        apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+                        apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+                    ));
 
-                    if (!Directory.Exists(directoryPath))
-                    {
-                        Directory.CreateDirectory(directoryPath);
-                    }
-
-                    string filePath = Path.Combine(directoryPath, fileName);
-
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await userDto.Image.CopyToAsync(fileStream);
-                    }
-
-                    var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-                    user.ImageUrl = $"{baseUrl}/ProfileImage/{fileName}";
+                        var uploadParams = new ImageUploadParams()
+                        {
+                            File = new FileDescription(userDto.Image.FileName, userDto.Image.OpenReadStream())
+                        };
+                        var uploadResult = cloudinary.Upload(uploadParams);
+                    user.ImageUrl = uploadResult.Url.ToString();
                 }
 
                 await _userRepo.UpdateAsync(user);
@@ -418,6 +418,25 @@ namespace real_time_chat_web.Controllers
                 _response.StatusCode = HttpStatusCode.BadRequest;
                 return BadRequest(_response);
             }
+        }
+        [HttpPut("test-image")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<APIResponse>> TestImage(IFormFile file)
+        {
+            var cloudinary = new Cloudinary(new Account(
+            cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+            apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+            apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+        ));
+
+            var uploadParams = new ImageUploadParams()
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream())
+            };
+            var uploadResult = cloudinary.Upload(uploadParams);
+
+            return Ok(new { uploadResult.Url });
         }
     }
 

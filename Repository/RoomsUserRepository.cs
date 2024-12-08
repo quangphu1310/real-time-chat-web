@@ -4,6 +4,8 @@ using real_time_chat_web.Data;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Repository.IRepository;
+using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace real_time_chat_web.Repository
@@ -37,10 +39,39 @@ namespace real_time_chat_web.Repository
             await SaveAsync();
         }
 
+        public async Task<List<ApplicationUser>> GetRoomsUserAsync(int IdRooms)
+        {
+            var users = await _db.RoomsUser
+                .Where(r => r.IdRooms == IdRooms)
+                .Include(r => r.User)
+                .Select(r => r.User)
+                .ToListAsync();
+
+            return users;
+
+        }
+
         public async Task SaveAsync()
         {
             _db.SaveChanges();
         }
 
+
+        public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string user)
+        {
+            var rooms = await _db.RoomsUser
+                .Where(ru => ru.IdUser == user) 
+                .Include(ru => ru.Rooms)  
+                .Select(ru => new RoomsDTO
+                {
+                    Description = ru.Rooms.Description,
+                    IdRooms = ru.IdRooms,
+                    CreatedDate = ru.Rooms.CreatedDate,
+                    IsActive = ru.Rooms.IsActive,
+                    RoomName = ru.Rooms.RoomName,
+                })
+                .ToListAsync();
+            return rooms;
+        }
     }
 }

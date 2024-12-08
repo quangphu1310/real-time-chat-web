@@ -100,11 +100,11 @@ namespace real_time_chat_web.Repository
                 var result = await _userManager.CreateAsync(user, registerationRequestDTO.Password);
                 if (result.Succeeded)
                 {
-                    if (!await _roleManager.RoleExistsAsync("admin"))
+                    if (!await _roleManager.RoleExistsAsync("user"))
                     {
-                        await _roleManager.CreateAsync(new IdentityRole("admin"));
+                        await _roleManager.CreateAsync(new IdentityRole("user"));
                     }
-                    await _userManager.AddToRoleAsync(user, "admin");
+                    await _userManager.AddToRoleAsync(user, "user");
 
                     // Xác nhận email
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);

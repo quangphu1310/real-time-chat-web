@@ -21,7 +21,7 @@ namespace real_time_chat_web.Repository
         public async Task<RoomsUser> CreateRoomsUserAsync(RoomsUser entity)
         {
             entity.DayAdd = DateTime.Now;
-            
+
             _db.RoomsUser.Add(entity);
             await SaveAsync();
             return entity;
@@ -60,8 +60,8 @@ namespace real_time_chat_web.Repository
         public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string user)
         {
             var rooms = await _db.RoomsUser
-                .Where(ru => ru.IdUser == user) 
-                .Include(ru => ru.Rooms)  
+                .Where(ru => ru.IdUser == user)
+                .Include(ru => ru.Rooms)
                 .Select(ru => new RoomsDTO
                 {
                     Description = ru.Rooms.Description,
@@ -72,6 +72,16 @@ namespace real_time_chat_web.Repository
                 })
                 .ToListAsync();
             return rooms;
+        }
+
+        public async Task<List<RoomsUser>> GetAllRoomsUserAsync()
+        {
+
+            return await _db.RoomsUser
+        .Include(r => r.Rooms) // Bao gồm thông tin Rooms
+        .Include(r => r.User)  // Bao gồm thông tin User
+        .Include(r => r.PerUser) // Bao gồm thông tin PerUser
+        .ToListAsync();
         }
     }
 }

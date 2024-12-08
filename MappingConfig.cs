@@ -30,6 +30,13 @@ namespace real_time_chat_web
             CreateMap<Rooms, RoomsUpdateDTO>().ReverseMap();
             CreateMap<Rooms, RoomsCreateDTO>().ReverseMap();
             CreateMap<RoomsUser, RoomsUserCreateDTO>().ReverseMap();
+            CreateMap<RoomsUser, RoomsUserDTO>()
+            .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Rooms.RoomName))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.Name))
+            .ForMember(dest => dest.PerUserName, opt => opt.MapFrom(src => src.PerUser.Name));
+
+            CreateMap<VideoCall, VideoCallCreateDTO>().ReverseMap();
+            CreateMap<VideoCallCreateDTO, VideoCall>().ReverseMap();
 
         }
     }

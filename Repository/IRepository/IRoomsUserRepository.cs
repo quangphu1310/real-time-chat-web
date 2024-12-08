@@ -12,6 +12,7 @@ namespace real_time_chat_web.Repository.IRepository
         Task <List<ApplicationUser>> GetRoomsUserAsync(int IdRooms);
         Task SaveAsync();
         Task<List<RoomsDTO>> GetRoomsByUserAsync(string user);
+        Task<List<RoomsUser>> GetAllRoomsUserAsync();
         
     }
 }

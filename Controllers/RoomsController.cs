@@ -88,7 +88,7 @@ namespace real_time_chat_web.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "admin, mod", AuthenticationSchemes = "Bearer")]
 
         public async Task<IActionResult> DeleteRooms(int id)
         {

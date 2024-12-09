@@ -80,7 +80,8 @@ namespace real_time_chat_web.Hubs
                             UserId = userConnection.UserId,
                             Content = message,
                             FileUrl = fileUrl ?? "", // Ensure FileUrl is either a valid URL or an empty string
-                            SentAt = newMessage.SentAt
+                            SentAt = newMessage.SentAt,
+                            RoomId = userConnection.RoomId
                         });
                 }
                 catch (Exception ex)

@@ -12,7 +12,7 @@ namespace real_time_chat_web.Controllers
 {
     [Route("api/Rooms-User")]
     [ApiController]
-    
+
     public class RoomsUserController : ControllerBase
     {
         private readonly IRoomsUserRepository _repository;
@@ -30,56 +30,56 @@ namespace real_time_chat_web.Controllers
         [HttpPost("add-user-in-room")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "mod", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> CreateRoomsUser([FromBody] RoomsUserCreateDTO CreRoomUser)
         {
-            
-                if(CreRoomUser == null || CreRoomUser.IdUser == null || CreRoomUser.IdUser.Count == 0 || CreRoomUser.IdRooms == null)
-                {
-                    return BadRequest("UserId is Null");
-                }
-                var user = await _userManager.GetUserAsync(User);
-                if (user == null)
-                {
-                    return Unauthorized("Invalid User");
-                }
-                
-                CreRoomUser.IdPerAdd = user.Id;
-               
-                foreach (var item in CreRoomUser.IdUser)
-                {
+
+            if (CreRoomUser == null || CreRoomUser.IdUser == null || CreRoomUser.IdUser.Count == 0 || CreRoomUser.IdRooms == null)
+            {
+                return BadRequest("UserId is Null");
+            }
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Unauthorized("Invalid User");
+            }
+
+            CreRoomUser.IdPerAdd = user.Id;
+
+            foreach (var item in CreRoomUser.IdUser)
+            {
                 var userExists = await _userManager.FindByIdAsync(item);
                 if (userExists == null)
                 {
                     return BadRequest($"User with ID {item} does not exist.");
                 }
                 //var NewUser = _mapper.Map<RoomsUser>(CreRoomUser);
-                    var newUser = new RoomsUser
-                    {
-                        IdRooms = CreRoomUser.IdRooms,
-                        IdUser = item, // Lưu từng `IdUser`
-                        IdPerAdd = CreRoomUser.IdPerAdd,
-                        DayAdd = DateTime.Now
-                    };
-                    await _repository.CreateRoomsUserAsync(newUser);
-                }
-                _apiResponse.IsSuccess = true;
-                _apiResponse.StatusCode = HttpStatusCode.OK;
-                _apiResponse.Result = CreRoomUser;
-                return Ok(_apiResponse);
+                var newUser = new RoomsUser
+                {
+                    IdRooms = CreRoomUser.IdRooms,
+                    IdUser = item, // Lưu từng `IdUser`
+                    IdPerAdd = CreRoomUser.IdPerAdd,
+                    DayAdd = DateTime.Now
+                };
+                await _repository.CreateRoomsUserAsync(newUser);
+            }
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = CreRoomUser;
+            return Ok(_apiResponse);
         }
 
         [HttpDelete("remove-user-out-room")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "mod", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> DeleteRoomsUser([FromBody] RoomsUserDeleteDTO DeleteRoomsUser)
         {
             if (DeleteRoomsUser == null || DeleteRoomsUser.IdUser == null || DeleteRoomsUser.IdUser.Count == 0 || DeleteRoomsUser.IdRooms <= 0)
             {
                 return BadRequest("Invalid Data");
             }
-            foreach(var item in DeleteRoomsUser.IdUser)
+            foreach (var item in DeleteRoomsUser.IdUser)
             {
                 var User = new RoomsUser
                 {
@@ -94,6 +94,93 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Result = DeleteRoomsUser;
             return Ok(_apiResponse);
 
+        }
+
+        [HttpGet("{IdRooms}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> GetAllUsersInRoom(int IdRooms)
+        {
+            var users = await _repository.GetRoomsUserAsync(IdRooms);
+
+            if (users == null || users.Count == 0)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                _apiResponse.Errors.Add("No users found in the specified room.");
+                return NotFound(_apiResponse);
+            }
+            var userDTO = new List<ApplicationUserDTO>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userDTO.Add(new ApplicationUserDTO
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    UserName = user.UserName,
+                    EmailConfirmed = user.EmailConfirmed.ToString(),
+                    PhoneNumber = user.PhoneNumber,
+                    Role = string.Join(",", roles),
+                    ImageUrl = user.ImageUrl
+                });
+            }
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = userDTO;
+            return Ok(_apiResponse);
+        }
+
+        [HttpGet("get-rooms-by-user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "mod, admin, user", AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> GetRoomsByUser()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode= HttpStatusCode.NotFound;
+                _apiResponse.Errors.Add("You not Login!");
+                return NotFound(_apiResponse);
+            }
+            var byUser = user.Id;
+            var rooms = await _repository.GetRoomsByUserAsync(byUser);
+            if (rooms == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                _apiResponse.Errors = new List<string>();
+            }
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            _apiResponse.Result = rooms;
+            return Ok(_apiResponse);
+        }
+
+        [HttpGet("get-all")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "mod, admin, user", AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> getAllRoomsUser()
+        {
+            var response = await _repository.GetAllRoomsUserAsync();
+            if (response == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors = new List<string>{"No data Found"};
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+            var res = _mapper.Map<List<RoomsUserDTO>>(response);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode= HttpStatusCode.OK;
+            _apiResponse.Result = res;
+
+            
+            return Ok(_apiResponse);
         }
     }
 }

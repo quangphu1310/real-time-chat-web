@@ -7,6 +7,8 @@ using real_time_chat_web.Services;
 using real_time_chat_web.Services.IServices;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Net;
+using real_time_chat_web.Repository.IRepository;
+using AutoMapper;
 
 namespace real_time_chat_web.Controllers
 {
@@ -16,10 +18,18 @@ namespace real_time_chat_web.Controllers
     {
         private readonly IRoomsService _roomsServices;
         private readonly UserManager<ApplicationUser> _userManager;
-        public RoomsController(IRoomsService roomsService, UserManager<ApplicationUser> userManager)
+        private readonly IRoomsUserRepository _roomsUserRepository;
+        private readonly IVideoCallService _videoCallService;
+        private readonly INotificationService _notificationService;
+        private readonly IMapper _mapper;
+        public RoomsController(IRoomsService roomsService, UserManager<ApplicationUser> userManager, IRoomsUserRepository roomsUserRepository, IVideoCallService videoCallService, INotificationService notificationService, IMapper mapper)
         {
             _roomsServices = roomsService;
             _userManager = userManager;
+            _roomsUserRepository = roomsUserRepository;
+            _videoCallService = videoCallService;
+            _notificationService = notificationService;
+            _mapper = mapper;
         }
 
         [HttpGet]
@@ -78,7 +88,7 @@ namespace real_time_chat_web.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "admin, mod", AuthenticationSchemes = "Bearer")]
 
         public async Task<IActionResult> DeleteRooms(int id)
         {
@@ -107,5 +117,80 @@ namespace real_time_chat_web.Controllers
 
             return Ok(updatedRoom);
         }
+
+
+
+        //start video call jitsi
+        [HttpPost("{RoomId}/start-video-call")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> StartVideoCall(int RoomId)
+        {
+            // Kiểm tra phòng chat tồn tại
+            var room = await _roomsServices.GetRoomAsync(RoomId);
+            if (!room.IsSuccess)
+            {
+                return NotFound(new APIResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    IsSuccess = false,
+                    Errors = new List<string> { "Room not found" }
+                });
+            }
+
+            // Tạo tên phòng Jitsi dựa trên IdRooms
+            string roomName = $"room_{RoomId}_{Guid.NewGuid()}";
+            string videoCallUrl = $"https://meet.jit.si/{roomName}";
+
+            // Gửi thông báo tới các thành viên trong phòng
+            var members = await _roomsUserRepository.GetRoomsUserAsync(RoomId);
+            foreach (var member in members)
+            {
+                await _notificationService.NotifyUser(member.Id, new
+                {
+                    RoomId = RoomId,
+                    VideoCallUrl = videoCallUrl,
+                    Message = $"{User.Identity.Name} đã bắt đầu một cuộc gọi video trong phòng."
+                });
+            }
+            var user = await _userManager.GetUserAsync(User);
+            // Lưu thông tin cuộc gọi video (nếu cần)
+            var videoCall = new VideoCallCreateDTO
+            {
+                RoomId = RoomId,
+                VideoCallUrl = videoCallUrl,
+                CreatedBy = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                Status = "Ongoing"
+            };
+            VideoCall video = _mapper.Map<VideoCall>(videoCall);
+            await _videoCallService.CreateVideoCallAsync(video);
+
+            return Ok(new { VideoCallUrl = videoCallUrl });
+        }
+
+
+        // Get video call
+        [HttpGet("{roomId}/current-video-call")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> GetCurrentVideoCall(int roomId)
+        {
+            var videoCall = await _videoCallService.GetCurrentVideoCallAsync(roomId);
+            if (videoCall == null || videoCall.Status != "Ongoing")
+            {
+                return NotFound(new APIResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    IsSuccess = false,
+                    Errors = new List<string> { "No active video call in this room." }
+                });
+            }
+            return Ok(new { VideoCallUrl = videoCall.VideoCallUrl });
+        }
+
+
     }
 }

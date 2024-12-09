@@ -63,6 +63,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+//Add NotificationService
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+//Add VideocallServices
+builder.Services.AddScoped<IVideoCallService, VideoCallService>();
 
 // Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -152,7 +157,8 @@ app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<ChatHub>("/chat");
-
+//Notification
+app.MapHub<NotificationHub>("/notificationHub");
 app.Run();
 void SeedDatabase()
 {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using real_time_chat_web.Models;
+using System.Reflection.Emit;
 
 namespace real_time_chat_web.Data
 {
@@ -15,7 +16,7 @@ namespace real_time_chat_web.Data
         public DbSet<Rooms> rooms { get; set; }
         public DbSet<RoomsUser> RoomsUser { get; set; }
         public DbSet<Messages> Messages { get; set; }
-
+        public DbSet<VideoCall> videoCalls { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.Entity<Rooms>()
@@ -23,6 +24,11 @@ namespace real_time_chat_web.Data
                .WithMany()
                .HasForeignKey(rt => rt.CreatedBy)
                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Rooms>()
+                .HasMany(r => r.RoomsUsers)
+                .WithOne(ru => ru.Rooms)
+                .HasForeignKey(ru => ru.IdRooms);
 
             builder.Entity<RoomsUser>()
     .HasKey(r => new { r.IdRooms, r.IdUser });
@@ -65,6 +71,19 @@ namespace real_time_chat_web.Data
                .WithMany()
                .HasForeignKey(rt => rt.RoomId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // add relationships VideoCall
+            builder.Entity<VideoCall>()
+                .HasOne(vc => vc.Rooms)
+                .WithMany(r => r.VideoCalls)
+                .HasForeignKey(vc => vc.RoomId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<VideoCall>()
+                .HasOne(vc => vc.User)
+                .WithMany(u => u.CreatedVideoCalls)
+                .HasForeignKey(vc => vc.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

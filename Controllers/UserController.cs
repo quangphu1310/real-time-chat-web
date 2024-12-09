@@ -1,12 +1,18 @@
 ﻿using AutoMapper;
 using Azure;
+using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using real_time_chat_web.Data;
+using real_time_chat_web.Migrations;
 using real_time_chat_web.Models;
 using real_time_chat_web.Models.DTO;
+using real_time_chat_web.Repository;
 using real_time_chat_web.Repository.IRepository;
 using System.Net;
 
@@ -21,20 +27,26 @@ namespace real_time_chat_web.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly APIResponse _response;
+        private readonly ApplicationDbContext _db;
+        private readonly IRoomsUserRepository _roomsUserRepo;
+        private readonly IConfiguration _configuration;
 
-        public UserController(IUserRepository userRepo, IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UserController(IUserRepository userRepo,IConfiguration configuration, IRoomsUserRepository roomsUserRepo, ApplicationDbContext db,IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userRepo = userRepo;
             _mapper = mapper;
             _userManager = userManager;
             _roleManager = roleManager;
             _response = new APIResponse();
+            _db = db;
+            _roomsUserRepo = roomsUserRepo;
+            _configuration = configuration;
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> GetUsers([FromQuery] string? search)
         {
             try
@@ -54,7 +66,9 @@ namespace real_time_chat_web.Controllers
                         Name = user.Name,
                         UserName = user.UserName,
                         EmailConfirmed = user.EmailConfirmed.ToString(),
-                        Role = string.Join(",", roles)
+                        PhoneNumber = user.PhoneNumber,
+                        Role = string.Join(",", roles),
+                        ImageUrl = user.ImageUrl
                     });
                 }
 
@@ -77,7 +91,7 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
+        [Authorize( AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> GetUserByUserName(string username)
         {
             try
@@ -293,9 +307,19 @@ namespace real_time_chat_web.Controllers
                     _response.Errors = new List<string> { "User not found" };
                     return NotFound(_response);
                 }
+                
+                var listMessages = _db.Messages.Where(x => x.UserId == user.Id).ToList();
+                _db.RemoveRange(listMessages);
+
+                var listRooms = _db.rooms.Where(x => x.CreatedBy == user.Id).ToList();
+                _db.RemoveRange(listRooms);
+
+                var listUserRooms = _db.RoomsUser.Where(x => x.IdUser == user.Id).ToList();
+                _db.RemoveRange(listUserRooms);
+
 
                 await _userRepo.RemoveAsync(user);
-
+                
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 _response.Result = $"User with ID {id} has been successfully deleted.";
@@ -316,61 +340,77 @@ namespace real_time_chat_web.Controllers
             {
                 try
                 {
-                    var user = await _userManager.GetUserAsync(User);
-                    if (user == null)
-                    {
-                        _response.IsSuccess = false;
-                        _response.StatusCode = HttpStatusCode.BadRequest;
-                        _response.Errors = new List<string> { "User not found" };
-                        return BadRequest(_response);
-                    }
-
-                    if (!string.IsNullOrEmpty(userDto.Name))
-                    {
-                        user.Name = userDto.Name;
-                    }
-                    if (!string.IsNullOrEmpty(userDto.PhoneNumber))
-                    {
-                        user.PhoneNumber = userDto.PhoneNumber;
-                    }
-
-                    if (userDto.Image != null)
-                    {
-                        string fileName = user.Id + Path.GetExtension(userDto.Image.FileName);
-                        string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "ProfileImage");
-
-                        if (!Directory.Exists(directoryPath))
-                        {
-                            Directory.CreateDirectory(directoryPath);
-                        }
-
-                        string filePath = Path.Combine(directoryPath, fileName);
-
-                        using (var fileStream = new FileStream(filePath, FileMode.Create))
-                        {
-                            userDto.Image.CopyTo(fileStream);
-                        }
-
-                        var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-                        user.ImageUrl = $"{baseUrl}/ProfileImage/{fileName}";
-                    }
-
-                    await _userRepo.UpdateAsync(user);
-                    _response.StatusCode = HttpStatusCode.OK;
-                    _response.IsSuccess = true;
-                    _response.Result = _mapper.Map<ApplicationUserDTO>(user);
-                    return Ok(_response);
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.Errors = new List<string> { "User not found" };
+                    return BadRequest(_response);
                 }
-                catch (Exception ex)
+
+                if (!string.IsNullOrEmpty(userDto.Name))
+                {
+                    user.Name = userDto.Name;
+                }
+                if (!string.IsNullOrEmpty(userDto.PhoneNumber))
+                {
+                    user.PhoneNumber = userDto.PhoneNumber;
+                }
+
+                await _userRepo.UpdateAsync(user);
+                _response.StatusCode = HttpStatusCode.OK;
+                _response.IsSuccess = true;
+                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
+                return Ok(_response);
+            }
+            catch (Exception ex)
+            {
+                _response.IsSuccess = false;
+                _response.Errors = new List<string> { ex.Message };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                return BadRequest(_response);
+            }
+        }
+        [HttpPut("change-image-profile")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<ActionResult<APIResponse>> ChangeImageProfile([FromForm] ApplicationUserImageProfileDTO userDto)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null)
                 {
                     _response.IsSuccess = false;
-                    _response.Errors = new List<string> { ex.Message };
                     _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.Errors = new List<string> { "User not found" };
                     return BadRequest(_response);
+                }
+
+                if (userDto.Image != null)
+                {
+                    var cloudinary = new Cloudinary(new Account(
+                        cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+                        apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+                        apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+                    ));
+
+                        var uploadParams = new ImageUploadParams()
+                        {
+                            File = new FileDescription(userDto.Image.FileName, userDto.Image.OpenReadStream())
+                        };
+                        var uploadResult = cloudinary.Upload(uploadParams);
+                    user.ImageUrl = uploadResult.Url.ToString();
                 }
             }
 
+            var uploadParams = new ImageUploadParams()
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream())
+            };
+            var uploadResult = cloudinary.Upload(uploadParams);
 
+            return Ok(new { uploadResult.Url });
+        }
     }
 
 }

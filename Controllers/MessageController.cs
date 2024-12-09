@@ -327,4 +327,48 @@ public class MessagesController : ControllerBase
             return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
         }
     }
+
+    //Get message and time cuối cùng
+    [HttpGet("get-message-last/{roomId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    //[Authorize(AuthenticationSchemes = "Bearer")]
+    public async Task<IActionResult> GetLastMessage(int roomId)
+    {
+        try
+        {
+            var lastMessage = await _db.Messages
+                .Where(m => m.RoomId == roomId)
+                .OrderByDescending(m => m.SentAt)
+                .Select(m => new
+                {
+                    m.Content,
+                    m.SentAt,
+                    UserName = m.User.UserName, 
+                    m.Room.RoomName
+                })
+                .FirstOrDefaultAsync();
+
+                if (lastMessage == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("No messages found in the specified room");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = lastMessage;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+
+            return Ok(_apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error fetching last message: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
+    }
 }

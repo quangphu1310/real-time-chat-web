@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using real_time_chat_web.Data;
 
@@ -11,9 +12,11 @@ using real_time_chat_web.Data;
 namespace real_time_chat_web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241117104620_updaterooms")]
+    partial class updaterooms
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -227,6 +230,33 @@ namespace real_time_chat_web.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("real_time_chat_web.Models.MessageReadStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("MessageReadStatuses");
+                });
+
             modelBuilder.Entity("real_time_chat_web.Models.Messages", b =>
                 {
                     b.Property<int>("MessageId")
@@ -240,6 +270,7 @@ namespace real_time_chat_web.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FileUrl")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsPinned")
@@ -360,41 +391,6 @@ namespace real_time_chat_web.Migrations
                     b.ToTable("RoomsUser");
                 });
 
-            modelBuilder.Entity("real_time_chat_web.Models.VideoCall", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("RoomId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("VideoCallUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedBy");
-
-                    b.HasIndex("RoomId");
-
-                    b.ToTable("videoCalls");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -444,6 +440,25 @@ namespace real_time_chat_web.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("real_time_chat_web.Models.MessageReadStatus", b =>
+                {
+                    b.HasOne("real_time_chat_web.Models.Messages", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("real_time_chat_web.Models.Messages", b =>
@@ -507,35 +522,9 @@ namespace real_time_chat_web.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("real_time_chat_web.Models.VideoCall", b =>
-                {
-                    b.HasOne("real_time_chat_web.Models.ApplicationUser", "User")
-                        .WithMany("CreatedVideoCalls")
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("real_time_chat_web.Models.Rooms", "Rooms")
-                        .WithMany("VideoCalls")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Rooms");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("real_time_chat_web.Models.ApplicationUser", b =>
-                {
-                    b.Navigation("CreatedVideoCalls");
-                });
-
             modelBuilder.Entity("real_time_chat_web.Models.Rooms", b =>
                 {
                     b.Navigation("RoomsUsers");
-
-                    b.Navigation("VideoCalls");
                 });
 #pragma warning restore 612, 618
         }

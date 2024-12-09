@@ -332,16 +332,13 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
-        [HttpPut("change-profile")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(AuthenticationSchemes = "Bearer")]
-        public async Task<ActionResult<APIResponse>> ChangeProfile([FromForm] ApplicationUserProfileDTO userDto)
-        {
-            try
+            [HttpPut("change-profile")]
+            [ProducesResponseType(StatusCodes.Status200OK)]
+            [ProducesResponseType(StatusCodes.Status400BadRequest)]
+            [Authorize(AuthenticationSchemes = "Bearer")]
+            public async Task<ActionResult<APIResponse>> ChangeProfile([FromForm] ApplicationUserProfileDTO userDto)
             {
-                var user = await _userManager.GetUserAsync(User);
-                if (user == null)
+                try
                 {
                     _response.IsSuccess = false;
                     _response.StatusCode = HttpStatusCode.BadRequest;
@@ -404,31 +401,7 @@ namespace real_time_chat_web.Controllers
                         var uploadResult = cloudinary.Upload(uploadParams);
                     user.ImageUrl = uploadResult.Url.ToString();
                 }
-
-                await _userRepo.UpdateAsync(user);
-                _response.StatusCode = HttpStatusCode.OK;
-                _response.IsSuccess = true;
-                _response.Result = _mapper.Map<ApplicationUserDTO>(user);
-                return Ok(_response);
             }
-            catch (Exception ex)
-            {
-                _response.IsSuccess = false;
-                _response.Errors = new List<string> { ex.Message };
-                _response.StatusCode = HttpStatusCode.BadRequest;
-                return BadRequest(_response);
-            }
-        }
-        [HttpPut("test-image")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<APIResponse>> TestImage(IFormFile file)
-        {
-            var cloudinary = new Cloudinary(new Account(
-            cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
-            apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
-            apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
-        ));
 
             var uploadParams = new ImageUploadParams()
             {

@@ -6,5 +6,6 @@ namespace real_time_chat_web.Models
     {
         public string Name { get; set; }
         public string? ImageUrl { get; set; }
+        public virtual ICollection<VideoCall> CreatedVideoCalls { get; set; }
     }
 }

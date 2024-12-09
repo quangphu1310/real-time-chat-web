@@ -146,6 +146,27 @@ namespace real_time_chat_web.Controllers
             return Ok(_apiResponse);
         }
 
-        
+        [HttpGet("get-all")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "mod, admin, user", AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> getAllRoomsUser()
+        {
+            var response = await _repository.GetAllRoomsUserAsync();
+            if (response == null)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors = new List<string>{"No data Found"};
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+            var res = _mapper.Map<List<RoomsUserDTO>>(response);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.StatusCode= HttpStatusCode.OK;
+            _apiResponse.Result = res;
+
+            
+            return Ok(_apiResponse);
+        }
     }
 }

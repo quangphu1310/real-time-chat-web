@@ -99,7 +99,7 @@ namespace real_time_chat_web.Controllers
         [HttpGet("{IdRooms}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
+        //[Authorize(Roles = "mod, admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> GetAllUsersInRoom(int IdRooms)
         {
             var users = await _repository.GetRoomsUserAsync(IdRooms);

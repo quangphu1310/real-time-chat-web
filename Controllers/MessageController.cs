@@ -127,6 +127,39 @@ public class MessagesController : ControllerBase
             return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
         }
     }
+    [HttpGet("room/{roomId}/pinned-messages")]
+    //[Authorize( AuthenticationSchemes = "Bearer")]
+    public async Task<ActionResult<APIResponse>> GetMessagePinnedInRoom(int roomId)
+    {
+        try
+        {
+            var messages = await _db.Messages
+                .Where(m => m.RoomId == roomId && m.IsPinned)
+                .Include(m => m.User)
+                .ToListAsync();
+
+            if (messages == null || messages.Count == 0)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("No messages found for this room");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
+
+            var messageDtos = _mapper.Map<IEnumerable<MessageGetDTO>>(messages);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = messageDtos;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error fetching messages: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
+    }
 
     [HttpPost("upload-file/{RoomId}")]
     public async Task<IActionResult> UploadFile(int RoomId, IFormFile file, [FromForm] string UserId)
@@ -188,12 +221,9 @@ public class MessagesController : ControllerBase
         }
     }
 
-
-
-
     [HttpPut("pin/{messageId}")]
-    public async Task<IActionResult> PinMessage(int messageId, [FromQuery] bool isPinned)
-    {
+    public async Task<IActionResult> PinMessage(int messageId)
+        {
         try
         {
             var message = await _db.Messages.FindAsync(messageId);
@@ -204,11 +234,15 @@ public class MessagesController : ControllerBase
                 _apiResponse.StatusCode = HttpStatusCode.NotFound;
                 return NotFound(_apiResponse);
             }
-
-            message.IsPinned = isPinned;
+            if(message.IsPinned == true)
+            {
+                message.IsPinned = false;
+            }
+            else message.IsPinned = true;
             await _db.SaveChangesAsync();
 
             _apiResponse.IsSuccess = true;
+            _apiResponse.Result = message;
             _apiResponse.StatusCode = HttpStatusCode.OK;
             return Ok(_apiResponse);
         }

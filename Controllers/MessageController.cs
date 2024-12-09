@@ -7,6 +7,8 @@ using real_time_chat_web.Models;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
+using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -16,13 +18,15 @@ public class MessagesController : ControllerBase
     private readonly IMapper _mapper;
     private APIResponse _apiResponse;
     private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _configuration;
 
-    public MessagesController(ApplicationDbContext db, IMapper mapper, IWebHostEnvironment env)
+    public MessagesController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration, IWebHostEnvironment env)
     {
         _db = db;
         _mapper = mapper;
         _apiResponse = new APIResponse();
         _env = env;
+        _configuration= configuration;
     }
 
     [HttpGet("{id}")]
@@ -89,78 +93,41 @@ public class MessagesController : ControllerBase
             return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
         }
     }
-    //[HttpPost("upload-file/{RoomId}")]
-    //public async Task<IActionResult> UploadFile(int RoomId, IFormFile file, [FromForm] string UserId)
-    //{
-    //    if (file == null || file.Length == 0)
-    //    {
-    //        return BadRequest("No file uploaded.");
-    //    }
 
-    //    if (string.IsNullOrWhiteSpace(UserId))
-    //    {
-    //        return BadRequest("Invalid UserId.");
-    //    }
+    [HttpGet("room/{roomId}")]
+    //[Authorize( AuthenticationSchemes = "Bearer")]
+    public async Task<ActionResult<APIResponse>> GetMessagesByRoom(int roomId)
+    {
+        try
+        {
+            var messages = await _db.Messages
+                .Where(m => m.RoomId == roomId)
+                .Include(m => m.User)
+                .ToListAsync();
 
-    //    try
-    //    {
-    //        // Tạo file name duy nhất
-    //        string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-    //        string directoryPath = Path.Combine(_env.WebRootPath, "Messages");
+            if (messages == null || messages.Count == 0)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.Errors.Add("No messages found for this room");
+                _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                return NotFound(_apiResponse);
+            }
 
-    //        // Đảm bảo thư mục tồn tại
-    //        if (!Directory.Exists(directoryPath))
-    //        {
-    //            Directory.CreateDirectory(directoryPath);
-    //        }
+            var messageDtos = _mapper.Map<IEnumerable<MessageGetDTO>>(messages);
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = messageDtos;
+            _apiResponse.StatusCode = HttpStatusCode.OK;
+            return Ok(_apiResponse);
+        }
+        catch (Exception ex)
+        {
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error fetching messages: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+        }
+    }
 
-    //        string filePath = Path.Combine(directoryPath, fileName);
-
-    //        // Lưu file vào server
-    //        using (var fileStream = new FileStream(filePath, FileMode.Create))
-    //        {
-    //            await file.CopyToAsync(fileStream);
-    //        }
-
-    //        // Construct file URL
-    //        var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-    //        string fileUrl = $"{baseUrl}/Messages/{fileName}";
-
-    //        // Tạo nội dung HTML cho thẻ <a> với <img> nếu là hình ảnh
-    //        string fileHtml = Path.GetExtension(file.FileName).ToLower() switch
-    //        {
-    //            ".jpg" or ".jpeg" or ".png" or ".gif" =>
-    //                $"<a href=\"{fileUrl}\" target=\"_blank\"><img src=\"{fileUrl}\" class=\"post-image\"></a>",
-    //            _ => $"<a href=\"{fileUrl}\" target=\"_blank\">[File]</a>"
-    //        };
-
-    //        // Lưu tin nhắn kèm nội dung HTML vào cơ sở dữ liệu
-    //        var newMessage = new Messages
-    //        {
-    //            RoomId = RoomId,
-    //            UserId = UserId,
-    //            SentAt = DateTime.Now,
-    //            FileUrl = fileUrl,
-    //            Content = fileHtml, // Lưu nội dung HTML vào Content
-    //            IsPinned = false,
-    //            IsRead = false
-    //        };
-
-    //        _db.Messages.Add(newMessage);
-    //        await _db.SaveChangesAsync();
-
-    //        return Ok(new { FileUrl = fileUrl, Content = fileHtml });
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return StatusCode((int)HttpStatusCode.InternalServerError, new APIResponse
-    //        {
-    //            IsSuccess = false,
-    //            Errors = { $"Error uploading file: {ex.Message}" },
-    //            StatusCode = HttpStatusCode.InternalServerError
-    //        });
-    //    }
-    //}
     [HttpPost("upload-file/{RoomId}")]
     public async Task<IActionResult> UploadFile(int RoomId, IFormFile file, [FromForm] string UserId)
     {
@@ -176,51 +143,38 @@ public class MessagesController : ControllerBase
 
         try
         {
-            // Create a unique file name
-            string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            string directoryPath = Path.Combine(_env.WebRootPath, "Messages");
+            var cloudinary = new Cloudinary(new Account(
+                       cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+                       apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+                       apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+                   ));
 
-            // Ensure the directory exists
-            if (!Directory.Exists(directoryPath))
+            var uploadParams = new ImageUploadParams()
             {
-                Directory.CreateDirectory(directoryPath);
-            }
+                File = new FileDescription(file.FileName, file.OpenReadStream())
+            };
+            var uploadResult = cloudinary.Upload(uploadParams);
+            string fileUrl = uploadResult.Url.ToString();
 
-            string filePath = Path.Combine(directoryPath, fileName);
-
-            // Save the file to the server
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(fileStream);
-            }
-
-            // Construct file URL
-            var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-            string fileUrl = $"{baseUrl}/Messages/{fileName}";
-
-            // HTML content for images
             string fileHtml = Path.GetExtension(file.FileName).ToLower() switch
             {
                 ".jpg" or ".jpeg" or ".png" or ".gif" =>
                     $"<a href=\"{fileUrl}\" target=\"_blank\"><img src=\"{fileUrl}\" class=\"post-image\"></a>",
                 _ => $"<a href=\"{fileUrl}\" target=\"_blank\">[File]</a>"
             };
-
-            // Save message with file URL and HTML content in the database
             var newMessage = new Messages
             {
                 RoomId = RoomId,
                 UserId = UserId,
                 SentAt = DateTime.Now,
                 FileUrl = fileUrl,
-                Content = fileHtml, // Save HTML content
+                Content = fileHtml, 
                 IsPinned = false,
                 IsRead = false
             };
 
             _db.Messages.Add(newMessage);
             await _db.SaveChangesAsync();
-
             return Ok(new { FileUrl = fileUrl, Content = fileHtml });
         }
         catch (Exception ex)

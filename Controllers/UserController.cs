@@ -31,7 +31,7 @@ namespace real_time_chat_web.Controllers
         private readonly IRoomsUserRepository _roomsUserRepo;
         private readonly IConfiguration _configuration;
 
-        public UserController(IUserRepository userRepo, IConfiguration configuration, IRoomsUserRepository roomsUserRepo, ApplicationDbContext db, IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public UserController(IUserRepository userRepo,IConfiguration configuration, IRoomsUserRepository roomsUserRepo, ApplicationDbContext db,IMapper mapper, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _userRepo = userRepo;
             _mapper = mapper;
@@ -91,7 +91,7 @@ namespace real_time_chat_web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(AuthenticationSchemes = "Bearer")]
+        [Authorize( AuthenticationSchemes = "Bearer")]
         public async Task<ActionResult<APIResponse>> GetUserByUserName(string username)
         {
             try
@@ -307,7 +307,7 @@ namespace real_time_chat_web.Controllers
                     _response.Errors = new List<string> { "User not found" };
                     return NotFound(_response);
                 }
-
+                
                 var listMessages = _db.Messages.Where(x => x.UserId == user.Id).ToList();
                 _db.RemoveRange(listMessages);
 
@@ -319,7 +319,7 @@ namespace real_time_chat_web.Controllers
 
 
                 await _userRepo.RemoveAsync(user);
-
+                
                 _response.StatusCode = HttpStatusCode.OK;
                 _response.IsSuccess = true;
                 _response.Result = $"User with ID {id} has been successfully deleted.";
@@ -397,11 +397,11 @@ namespace real_time_chat_web.Controllers
                         apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
                     ));
 
-                    var uploadParams = new ImageUploadParams()
-                    {
-                        File = new FileDescription(userDto.Image.FileName, userDto.Image.OpenReadStream())
-                    };
-                    var uploadResult = cloudinary.Upload(uploadParams);
+                        var uploadParams = new ImageUploadParams()
+                        {
+                            File = new FileDescription(userDto.Image.FileName, userDto.Image.OpenReadStream())
+                        };
+                        var uploadResult = cloudinary.Upload(uploadParams);
                     user.ImageUrl = uploadResult.Url.ToString();
                 }
 
@@ -419,5 +419,25 @@ namespace real_time_chat_web.Controllers
                 return BadRequest(_response);
             }
         }
+        [HttpPut("test-image")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<APIResponse>> TestImage(IFormFile file)
+        {
+            var cloudinary = new Cloudinary(new Account(
+            cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+            apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+            apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+        ));
+
+            var uploadParams = new ImageUploadParams()
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream())
+            };
+            var uploadResult = cloudinary.Upload(uploadParams);
+
+            return Ok(new { uploadResult.Url });
+        }
     }
+
 }

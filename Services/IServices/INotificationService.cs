@@ -4,6 +4,6 @@ namespace real_time_chat_web.Services.IServices
 {
     public interface INotificationService
     {
-        Task NotifyUser(string userId, object message);
+        Task NotifyRoom(int RoomId, string videoCallUrl, string message);
     }
 }

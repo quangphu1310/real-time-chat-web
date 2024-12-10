@@ -230,6 +230,7 @@ public class MessagesController : ControllerBase
                 .OrderByDescending(m => m.SentAt)
                 .Select(m => new
                 {
+                    m.MessageId,
                     m.Content,
                     m.SentAt,
                     UserName = m.User.UserName, 

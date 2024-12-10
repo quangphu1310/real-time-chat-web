@@ -110,5 +110,48 @@ namespace real_time_chat_web.Hubs
                 ? userConnection
                 : null;
         }
+
+        // Method to delete a message
+        public async Task DeleteMessage(int messageId)
+        {
+            if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
+            {
+                // Tìm tin nhắn trong database
+                var message = await _context.Messages.FindAsync(messageId);
+                if (message == null)
+                {
+                    // Gửi thông báo lỗi nếu tin nhắn không tồn tại
+                    await Clients.Caller.SendAsync("Error", "Message not found.");
+                    return;
+                }
+
+                // Kiểm tra xem người dùng có quyền xóa tin nhắn hay không
+                if (message.UserId != userConnection.UserId)
+                {
+                    await Clients.Caller.SendAsync("Error", "You do not have permission to delete this message.");
+                    return;
+                }
+
+                // Xóa tin nhắn
+                _context.Messages.Remove(message);
+
+                try
+                {
+                    // Lưu thay đổi vào database
+                    await _context.SaveChangesAsync();
+
+                    // Gửi thông báo cho tất cả các client trong phòng
+                    await Clients.Group(userConnection.RoomId.ToString()).SendAsync(
+                        "MessageDeleted",
+                        new { MessageId = messageId }
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting message: {ex.Message}");
+                    await Clients.Caller.SendAsync("Error", "An error occurred while deleting the message.");
+                }
+            }
+        }
     }
 }

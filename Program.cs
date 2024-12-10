@@ -24,6 +24,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+//add signalR
+builder.Services.AddSignalR();
 
 // JWT Authentication Setup
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
@@ -143,6 +145,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
@@ -157,8 +160,9 @@ app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<ChatHub>("/chat");
-//Notification
 app.MapHub<NotificationHub>("/notificationHub");
+
+
 app.Run();
 void SeedDatabase()
 {

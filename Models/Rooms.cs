@@ -15,9 +15,15 @@ namespace real_time_chat_web.Models
         public bool IsActive { get; set; }
         public string Description { get; set; }
 
+        public int MessageId { get; set; }
+        [ForeignKey("MessageId")]
+        public Messages mess { get; set; }
+
         [ForeignKey("CreatedBy")]
         public ApplicationUser User { get; set; }
+
         public ICollection<RoomsUser> RoomsUsers { get; set; }
         public ICollection<VideoCall> VideoCalls { get; set; }
+        public ICollection<Messages> Messages { get; set; }
     }
 }

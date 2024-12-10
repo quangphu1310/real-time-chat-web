@@ -9,6 +9,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Net;
 using real_time_chat_web.Repository.IRepository;
 using AutoMapper;
+using real_time_chat_web.Migrations;
 
 namespace real_time_chat_web.Controllers
 {
@@ -35,7 +36,7 @@ namespace real_time_chat_web.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles ="admin", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> getAllRooms()
         {
             var response = await _roomsServices.GetAllRoomsAsync();
@@ -77,7 +78,7 @@ namespace real_time_chat_web.Controllers
             var user = await _userManager.GetUserAsync(User);
             roomsCreateDTO.CreatedBy = user.Id;
             var response = await _roomsServices.CreateRoomAsync(roomsCreateDTO);
-            
+
             if (!response.IsSuccess)
             {
                 return BadRequest();
@@ -88,7 +89,7 @@ namespace real_time_chat_web.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [Authorize(Roles = "admin, mod", AuthenticationSchemes = "Bearer")]
+        [Authorize(Roles = "admin", AuthenticationSchemes = "Bearer")]
 
         public async Task<IActionResult> DeleteRooms(int id)
         {
@@ -108,11 +109,11 @@ namespace real_time_chat_web.Controllers
 
         public async Task<ActionResult<RoomsUpdateDTO>> UpdateRoom(int id, [FromBody] RoomsUpdateDTO room)
         {
-            if (id != room.IdRooms) 
+            if (id != room.IdRooms)
                 return NotFound();
 
-            var updatedRoom = await _roomsServices.UpdateRoomAsync(id , room);
-            if (updatedRoom == null) 
+            var updatedRoom = await _roomsServices.UpdateRoomAsync(id, room);
+            if (updatedRoom == null)
                 return BadRequest();
 
             return Ok(updatedRoom);
@@ -143,18 +144,10 @@ namespace real_time_chat_web.Controllers
             string roomName = $"room_{RoomId}_{Guid.NewGuid()}";
             string videoCallUrl = $"https://meet.jit.si/{roomName}";
 
-            // Gửi thông báo tới các thành viên trong phòng
-            var members = await _roomsUserRepository.GetRoomsUserAsync(RoomId);
-            foreach (var member in members)
-            {
-                await _notificationService.NotifyUser(member.Id, new
-                {
-                    RoomId = RoomId,
-                    VideoCallUrl = videoCallUrl,
-                    Message = $"{User.Identity.Name} đã bắt đầu một cuộc gọi video trong phòng."
-                });
-            }
+            // Gửi thông báo tới tất cả thành viên trong phòng thông qua nhóm SignalR
             var user = await _userManager.GetUserAsync(User);
+            string userName = user?.UserName ?? "Someone";
+            await _notificationService.NotifyRoom(RoomId, videoCallUrl, $"{userName} đã bắt đầu một cuộc gọi video trong phòng.");
             // Lưu thông tin cuộc gọi video (nếu cần)
             var videoCall = new VideoCallCreateDTO
             {
@@ -167,7 +160,7 @@ namespace real_time_chat_web.Controllers
             VideoCall video = _mapper.Map<VideoCall>(videoCall);
             await _videoCallService.CreateVideoCallAsync(video);
 
-            return Ok(new { VideoCallUrl = videoCallUrl });
+            return Ok(new { videoCall });
         }
 
 
@@ -190,6 +183,27 @@ namespace real_time_chat_web.Controllers
             }
             return Ok(new { VideoCallUrl = videoCall.VideoCallUrl });
         }
+
+        //Get message and time cuối cùng
+        [HttpGet("get-message-last/{roomId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> GetLastMessage(int roomId)
+        {
+            var response = await _roomsServices.GetLastMessageAsync(roomId);
+            if (!response.IsSuccess)
+            {
+                new APIResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    IsSuccess = false,
+                    Errors = new List<string> { "Message not found" }
+                };
+            }
+            return Ok(response);
+        }
+
 
 
     }

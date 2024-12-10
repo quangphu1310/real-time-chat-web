@@ -111,24 +111,10 @@ namespace real_time_chat_web.Controllers
                 _apiResponse.Errors.Add("No users found in the specified room.");
                 return NotFound(_apiResponse);
             }
-            var userDTO = new List<ApplicationUserDTO>();
-            foreach (var user in users)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                userDTO.Add(new ApplicationUserDTO
-                {
-                    Id = user.Id,
-                    Name = user.Name,
-                    UserName = user.UserName,
-                    EmailConfirmed = user.EmailConfirmed.ToString(),
-                    PhoneNumber = user.PhoneNumber,
-                    Role = string.Join(",", roles),
-                    ImageUrl = user.ImageUrl
-                });
-            }
+
             _apiResponse.IsSuccess = true;
             _apiResponse.StatusCode = HttpStatusCode.OK;
-            _apiResponse.Result = userDTO;
+            _apiResponse.Result = users;
             return Ok(_apiResponse);
         }
 

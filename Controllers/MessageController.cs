@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using real_time_chat_web.Data;
@@ -6,11 +7,13 @@ using real_time_chat_web.Models.DTO;
 using real_time_chat_web.Models;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
+
 using System.IO;
 using CloudinaryDotNet.Actions;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.SignalR;
 using real_time_chat_web.Hubs;
+
 
 [ApiController]
 [Route("api/[controller]")]
@@ -22,18 +25,19 @@ public class MessagesController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _configuration;
     private readonly IHubContext<ChatHub> _hubContext;
-
+    
     public MessagesController(ApplicationDbContext db, IMapper mapper, IHubContext<ChatHub> hubContext, IConfiguration configuration, IWebHostEnvironment env)
     {
         _db = db;
         _mapper = mapper;
         _apiResponse = new APIResponse();
+
         _env = env;
         _configuration= configuration;
         _hubContext = hubContext;
     }
-
     [HttpGet("{id}")]
+    //[Authorize( AuthenticationSchemes = "Bearer")]
     public async Task<ActionResult<APIResponse>> GetMessage(int id)
     {
         try
@@ -64,40 +68,7 @@ public class MessagesController : ControllerBase
             return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
         }
     }
-
-    [HttpPost]
-    public async Task<IActionResult> SendMessage([FromBody] MessageCreateDTO messageDto)
-    {
-        try
-        {
-            messageDto.SentAt = DateTime.UtcNow;
-            var message = _mapper.Map<Messages>(messageDto);
-            message.IsPinned = false;
-
-            // If a file URL is provided, associate it with the message
-            if (!string.IsNullOrEmpty(messageDto.FileUrl))
-            {
-                message.FileUrl = messageDto.FileUrl;
-            }
-
-            _db.Messages.Add(message);
-            await _db.SaveChangesAsync();
-
-            _apiResponse.IsSuccess = true;
-            _apiResponse.Result = _mapper.Map<MessageGetDTO>(message);
-            _apiResponse.StatusCode = HttpStatusCode.Created;
-
-            return CreatedAtAction(nameof(GetMessage), new { id = message.MessageId }, _apiResponse);
-        }
-        catch (Exception ex)
-        {
-            _apiResponse.IsSuccess = false;
-            _apiResponse.Errors.Add($"Error creating message: {ex.Message}");
-            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
-            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
-        }
-    }
-
+    //Get messages by room
     [HttpGet("room/{roomId}")]
     //[Authorize( AuthenticationSchemes = "Bearer")]
     public async Task<ActionResult<APIResponse>> GetMessagesByRoom(int roomId)
@@ -133,21 +104,14 @@ public class MessagesController : ControllerBase
     }
 
 
+
     [HttpPost("upload-file/{RoomId}")]
     public async Task<IActionResult> UploadFile(int RoomId, IFormFile file, [FromForm] string UserId)
+
     {
-        if (file == null || file.Length == 0)
-        {
-            return BadRequest("No file uploaded.");
-        }
-
-        if (string.IsNullOrWhiteSpace(UserId))
-        {
-            return BadRequest("Invalid UserId.");
-        }
-
         try
         {
+
             // Upload file to Cloudinary
             var cloudinary = new Cloudinary(new Account(
                        cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
@@ -180,7 +144,13 @@ public class MessagesController : ControllerBase
                 IsRead = false
             };
 
-            _db.Messages.Add(newMessage);
+            messageDto.SentAt = DateTime.UtcNow;
+
+            var message = _mapper.Map<Messages>(messageDto);
+            message.IsPinned = false; 
+
+
+            _db.Messages.Add(message);
             await _db.SaveChangesAsync();
 
             // Tạo ViewModel để gửi qua SignalR
@@ -198,22 +168,27 @@ public class MessagesController : ControllerBase
                 .SendAsync("ReceiveMessage", messageViewModel);
 
             return Ok(new { FileUrl = fileUrl, Content = fileHtml });
+
+            _apiResponse.IsSuccess = true;
+            _apiResponse.Result = _mapper.Map<MessageGetDTO>(message);
+            _apiResponse.StatusCode = HttpStatusCode.Created;
+
+            return CreatedAtAction(nameof(GetMessage), new { id = message.MessageId }, _apiResponse);
+
         }
         catch (Exception ex)
         {
-            return StatusCode((int)HttpStatusCode.InternalServerError, new APIResponse
-            {
-                IsSuccess = false,
-                Errors = { $"Error uploading file: {ex.Message}" },
-                StatusCode = HttpStatusCode.InternalServerError
-            });
+            _apiResponse.IsSuccess = false;
+            _apiResponse.Errors.Add($"Error creating message: {ex.Message}");
+            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+
+            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
         }
     }
 
-
-
-
+    //Pin or Unpin a message
     [HttpPut("pin/{messageId}")]
+    //[Authorize(AuthenticationSchemes = "Bearer")]
     public async Task<IActionResult> PinMessage(int messageId, [FromQuery] bool isPinned)
     {
         try
@@ -243,7 +218,9 @@ public class MessagesController : ControllerBase
         }
     }
 
+    //Mark a message as read
     [HttpPut("read/{messageId}")]
+    //[Authorize(AuthenticationSchemes = "Bearer")]
     public async Task<IActionResult> MarkAsRead(int messageId)
     {
         try
@@ -273,6 +250,7 @@ public class MessagesController : ControllerBase
         }
     }
 
+    //Delete a message(for moderators and admins only)
     [HttpDelete("{messageId}")]
     [Authorize(Roles = "admin,mod", AuthenticationSchemes = "Bearer")]
     public async Task<IActionResult> DeleteMessage(int messageId)
@@ -318,6 +296,7 @@ public class MessagesController : ControllerBase
                 .OrderByDescending(m => m.SentAt)
                 .Select(m => new
                 {
+                    m.MessageId,
                     m.Content,
                     m.SentAt,
                     UserName = m.User.UserName, 

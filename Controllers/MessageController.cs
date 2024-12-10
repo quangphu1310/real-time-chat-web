@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using CloudinaryDotNet.Actions;
 using CloudinaryDotNet;
+using Microsoft.AspNetCore.SignalR;
+using real_time_chat_web.Hubs;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -19,13 +21,15 @@ public class MessagesController : ControllerBase
     private APIResponse _apiResponse;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _configuration;
+    private readonly IHubContext<ChatHub> _hubContext;
 
-    public MessagesController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration, IWebHostEnvironment env)
+    public MessagesController(ApplicationDbContext db, IHubContext<ChatHub> hubContext, IMapper mapper, IConfiguration configuration, IWebHostEnvironment env)
     {
         _db = db;
         _mapper = mapper;
         _apiResponse = new APIResponse();
         _env = env;
+        _hubContext = hubContext;
         _configuration= configuration;
     }
 
@@ -176,6 +180,7 @@ public class MessagesController : ControllerBase
 
         try
         {
+            // Upload file to Cloudinary
             var cloudinary = new Cloudinary(new Account(
                        cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
                        apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
@@ -195,19 +200,35 @@ public class MessagesController : ControllerBase
                     $"<a href=\"{fileUrl}\" target=\"_blank\"><img src=\"{fileUrl}\" class=\"post-image\"></a>",
                 _ => $"<a href=\"{fileUrl}\" target=\"_blank\">[File]</a>"
             };
+
             var newMessage = new Messages
             {
                 RoomId = RoomId,
                 UserId = UserId,
                 SentAt = DateTime.Now,
                 FileUrl = fileUrl,
-                Content = fileHtml, 
+                Content = fileHtml,
                 IsPinned = false,
                 IsRead = false
             };
 
             _db.Messages.Add(newMessage);
             await _db.SaveChangesAsync();
+
+            // Tạo ViewModel để gửi qua SignalR
+            var messageViewModel = new
+            {
+                RoomId = RoomId,
+                UserId = UserId,
+                Content = fileHtml,
+                FileUrl = fileUrl,
+                SentAt = DateTime.Now
+            };
+
+            // Gửi tin nhắn tới group của phòng
+            await _hubContext.Clients.Group(RoomId.ToString())
+                .SendAsync("ReceiveMessage", messageViewModel);
+
             return Ok(new { FileUrl = fileUrl, Content = fileHtml });
         }
         catch (Exception ex)

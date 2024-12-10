@@ -43,79 +43,46 @@ namespace real_time_chat_web.Hubs
             await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", "MyChat Bot", $"{userId} has joined the room");
             await SendUsersConnected(roomId);
         }
-
-        //public async Task SendMessage(string message, string fileUrl = null)
-        //{
-        //    if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
-        //    {
-        //        // Create a new message instance
-        //        var newMessage = new Messages
-        //        {
-        //            Content = message,
-        //            SentAt = DateTime.Now,
-        //            IsPinned = false,
-        //            UserId = userConnection.UserId,
-        //            RoomId = userConnection.RoomId,
-        //            IsRead = false,
-        //            FileUrl = fileUrl ?? "" 
-        //        };
-
-        //        _context.Messages.Add(newMessage);
-
-        //        try
-        //        {
-        //            await _context.SaveChangesAsync();
-
-
-        //            await Clients.Group(userConnection.RoomId.ToString()).SendAsync(
-        //                "ReceiveMessage",
-        //                new
-        //                {
-        //                    UserId = userConnection.UserId,
-        //                    Content = message,
-        //                    FileUrl = newMessage.FileUrl, 
-        //                    SentAt = newMessage.SentAt
-        //                });
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            Console.WriteLine($"Error saving message: {ex.Message}");
-        //            await Clients.Caller.SendAsync("Error", "An error occurred while sending the message.");
-        //        }
-        //    }
-        //}
         public async Task SendMessage(string message, string fileUrl = null)
         {
             if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
             {
-                // Create a new message instance
+                // Kiểm tra nếu cả message và fileUrl đều rỗng, không thực hiện thêm vào cơ sở dữ liệu
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    await Clients.Caller.SendAsync("Error", "Cannot send an empty message or file.");
+                    return;
+                }
+
+                // Tạo một thực thể message mới
                 var newMessage = new Messages
                 {
-                    Content = message,
+                    Content = message?.Trim(),
                     SentAt = DateTime.Now,
                     IsPinned = false,
                     UserId = userConnection.UserId,
                     RoomId = userConnection.RoomId,
                     IsRead = false,
-                    FileUrl = fileUrl ?? ""
+                    FileUrl = fileUrl?.Trim() ?? ""
                 };
 
                 _context.Messages.Add(newMessage);
 
                 try
                 {
+                    // Lưu tin nhắn vào cơ sở dữ liệu
                     await _context.SaveChangesAsync();
 
+                    // Gửi tin nhắn đến tất cả các client trong cùng một phòng
                     await Clients.Group(userConnection.RoomId.ToString()).SendAsync(
                         "ReceiveMessage",
                         new
                         {
                             UserId = userConnection.UserId,
-                            Content = message,
-                            FileUrl = fileUrl ?? "", // Ensure FileUrl is either a valid URL or an empty string
+                            Content = newMessage.Content,
+                            FileUrl = newMessage.FileUrl, // Đảm bảo FileUrl hợp lệ hoặc chuỗi rỗng
                             SentAt = newMessage.SentAt,
-                            RoomId = userConnection.RoomId
-
+                            RoomId = newMessage.RoomId
                         });
                 }
                 catch (Exception ex)
@@ -125,6 +92,8 @@ namespace real_time_chat_web.Hubs
                 }
             }
         }
+
+       
 
         public async Task SendUsersConnected(int roomId)
         {

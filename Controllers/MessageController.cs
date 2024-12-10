@@ -107,11 +107,19 @@ public class MessagesController : ControllerBase
 
     [HttpPost("upload-file/{RoomId}")]
     public async Task<IActionResult> UploadFile(int RoomId, IFormFile file, [FromForm] string UserId)
-
     {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest("No file uploaded.");
+        }
+
+        if (string.IsNullOrWhiteSpace(UserId))
+        {
+            return BadRequest("Invalid UserId.");
+        }
+
         try
         {
-
             // Upload file to Cloudinary
             var cloudinary = new Cloudinary(new Account(
                        cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
@@ -144,13 +152,7 @@ public class MessagesController : ControllerBase
                 IsRead = false
             };
 
-            messageDto.SentAt = DateTime.UtcNow;
-
-            var message = _mapper.Map<Messages>(messageDto);
-            message.IsPinned = false; 
-
-
-            _db.Messages.Add(message);
+            _db.Messages.Add(newMessage);
             await _db.SaveChangesAsync();
 
             // Tạo ViewModel để gửi qua SignalR
@@ -168,21 +170,15 @@ public class MessagesController : ControllerBase
                 .SendAsync("ReceiveMessage", messageViewModel);
 
             return Ok(new { FileUrl = fileUrl, Content = fileHtml });
-
-            _apiResponse.IsSuccess = true;
-            _apiResponse.Result = _mapper.Map<MessageGetDTO>(message);
-            _apiResponse.StatusCode = HttpStatusCode.Created;
-
-            return CreatedAtAction(nameof(GetMessage), new { id = message.MessageId }, _apiResponse);
-
         }
         catch (Exception ex)
         {
-            _apiResponse.IsSuccess = false;
-            _apiResponse.Errors.Add($"Error creating message: {ex.Message}");
-            _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
-
-            return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+            return StatusCode((int)HttpStatusCode.InternalServerError, new APIResponse
+            {
+                IsSuccess = false,
+                Errors = { $"Error uploading file: {ex.Message}" },
+                StatusCode = HttpStatusCode.InternalServerError
+            });
         }
     }
 

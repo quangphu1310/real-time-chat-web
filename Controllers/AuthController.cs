@@ -184,6 +184,34 @@ namespace real_time_chat_web.Controllers
             _apiResponse.Errors.Add("Something went wrong!");
             return BadRequest(_apiResponse);
         }
+        [HttpPost("reset-password-user")]
+        public async Task<IActionResult> ResetPasswordUser(RequestResetPasswordUserDTO request)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(request.Email);
+                if (user == null)
+                {
+                    _apiResponse.IsSuccess = false;
+                    _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                    _apiResponse.Result = "Invalid Input";
+                    return BadRequest(_apiResponse);
+                }
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var result = await _userManager.ResetPasswordAsync(user, token, request.Password);
+                if (result.Succeeded)
+                {
+                    _apiResponse.IsSuccess = true;
+                    _apiResponse.StatusCode = HttpStatusCode.OK;
+                    _apiResponse.Result = "Password reset is successfully";
+                    return Ok(_apiResponse);
+                }
+            }
+            _apiResponse.IsSuccess = false;
+            _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+            _apiResponse.Errors.Add("Something went wrong!");
+            return BadRequest(_apiResponse);
+        }
         [Authorize(AuthenticationSchemes = "Bearer")]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword(ChangePasswordDTO request)

@@ -19,5 +19,6 @@ namespace real_time_chat_web.Models
         public ApplicationUser User { get; set; }
         public ICollection<RoomsUser> RoomsUsers { get; set; }
         public ICollection<VideoCall> VideoCalls { get; set; }
+        public ICollection<Messages> Messages { get; set; }
     }
 }

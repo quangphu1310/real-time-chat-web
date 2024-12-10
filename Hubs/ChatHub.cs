@@ -54,6 +54,54 @@ namespace real_time_chat_web.Hubs
                     return;
                 }
 
+                //        // Tạo một thực thể message mới
+                //        var newMessage = new Messages
+                //        {
+                //            Content = message?.Trim(),
+                //            SentAt = DateTime.Now,
+                //            IsPinned = false,
+                //            UserId = userConnection.UserId,
+                //            RoomId = userConnection.RoomId,
+                //            IsRead = false,
+                //            FileUrl = fileUrl?.Trim() ?? ""
+                //        };
+
+                //        _context.Messages.Add(newMessage);
+
+                //        try
+                //        {
+                //            // Lưu tin nhắn vào cơ sở dữ liệu
+                //            await _context.SaveChangesAsync();
+
+                //            // Gửi tin nhắn đến tất cả các client trong cùng một phòng
+                //            await Clients.Group(userConnection.RoomId.ToString()).SendAsync(
+                //                "ReceiveMessage",
+                //                new
+                //                {
+                //                    UserId = userConnection.UserId,
+                //                    Content = newMessage.Content,
+                //                    FileUrl = newMessage.FileUrl, // Đảm bảo FileUrl hợp lệ hoặc chuỗi rỗng
+                //                    SentAt = newMessage.SentAt,
+                //                    RoomId = newMessage.RoomId,
+                //                    Name = newMessage.User.Name,
+
+                //                });
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            Console.WriteLine($"Error saving message: {ex.Message}");
+                //            await Clients.Caller.SendAsync("Error", "An error occurred while sending the message.");
+                //        }
+                //    }
+                //}
+
+                var user = await _context.Users.FindAsync(userConnection.UserId);
+                if (user == null)
+                {
+                    await Clients.Caller.SendAsync("Error", "User not found.");
+                    return;
+                }
+
                 // Tạo một thực thể message mới
                 var newMessage = new Messages
                 {
@@ -78,11 +126,12 @@ namespace real_time_chat_web.Hubs
                         "ReceiveMessage",
                         new
                         {
-                            UserId = userConnection.UserId,
+                            UserId = newMessage.UserId,
                             Content = newMessage.Content,
-                            FileUrl = newMessage.FileUrl, // Đảm bảo FileUrl hợp lệ hoặc chuỗi rỗng
+                            FileUrl = newMessage.FileUrl,
                             SentAt = newMessage.SentAt,
-                            RoomId = newMessage.RoomId
+                            RoomId = newMessage.RoomId,
+                            Name = user.Name 
                         });
                 }
                 catch (Exception ex)
@@ -93,7 +142,7 @@ namespace real_time_chat_web.Hubs
             }
         }
 
-       
+
 
         public async Task SendUsersConnected(int roomId)
         {

@@ -10,5 +10,6 @@ namespace real_time_chat_web.Services.IServices
         Task<APIResponse> CreateRoomAsync(RoomsCreateDTO room);
         Task<APIResponse> UpdateRoomAsync(int id, RoomsUpdateDTO room);
         Task<APIResponse> DeleteRoomAsync(int id);
+        Task<APIResponse> GetLastMessageAsync(int idRooms);
     }
 }

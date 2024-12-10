@@ -57,13 +57,13 @@ namespace real_time_chat_web.Repository
         }
 
 
-        public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string user)
+        public async Task<List<RoomsMessDTO>> GetRoomsByUserAsync(string user)
         {
             var rooms = await _db.RoomsUser
             .Where(ru => ru.IdUser == user)
             .Include(ru => ru.Rooms)
             .ThenInclude(r => r.Messages) // Include tin nhắn
-            .Select(ru => new RoomsDTO
+            .Select(ru => new RoomsMessDTO
             {
                 Description = ru.Rooms.Description,
                 IdRooms = ru.IdRooms,
@@ -73,11 +73,21 @@ namespace real_time_chat_web.Repository
                 LastMessageContent = ru.Rooms.Messages
                     .OrderByDescending(m => m.SentAt)
                     .Select(m => m.Content)
-                    .FirstOrDefault(), // Lấy nội dung tin nhắn cuối
+                    .FirstOrDefault(), 
+
+                IdPerMessLast = ru.Rooms.Messages
+                    .OrderByDescending(m => m.SentAt)
+                    .Select(m => m.UserId)
+                    .FirstOrDefault(),
+                
+                NamePerMessLast = ru.Rooms.Messages
+                    .OrderByDescending(m => m.SentAt)
+                    .Select(m => m.User.Name)
+                    .FirstOrDefault(),
                 LastMessageSentAt = ru.Rooms.Messages
                     .OrderByDescending(m => m.SentAt)
                     .Select(m => m.SentAt)
-                    .FirstOrDefault() // Lấy thời gian gửi tin nhắn cuối
+                    .FirstOrDefault() 
             })
             .ToListAsync();
             return rooms;

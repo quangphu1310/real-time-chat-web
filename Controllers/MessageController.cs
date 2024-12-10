@@ -306,6 +306,7 @@ public class MessagesController : ControllerBase
         }
     }
 
+    // Xóa tin nhắn và ảnh liên quan
     [HttpDelete("{messageId}")]
     [Authorize(Roles = "admin,mod", AuthenticationSchemes = "Bearer")]
     public async Task<IActionResult> DeleteMessage(int messageId)
@@ -319,6 +320,33 @@ public class MessagesController : ControllerBase
                 _apiResponse.Errors.Add("Message not found");
                 _apiResponse.StatusCode = HttpStatusCode.NotFound;
                 return NotFound(_apiResponse);
+            }
+
+            if(message.FileUrl != null)
+            {
+                var fileUrl = message.FileUrl;
+                var fileNameWithExtension = fileUrl.Substring(fileUrl.LastIndexOf("/") + 1); 
+                var publicId = fileNameWithExtension.Split('.')[0]; 
+
+                if (!string.IsNullOrEmpty(publicId))
+                {
+                    var cloudinary = new Cloudinary(new Account(
+                        cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+                        apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+                        apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+                    ));
+
+                    var deleteParams = new DeletionParams(publicId); 
+                    var deleteResult = cloudinary.Destroy(deleteParams);
+
+                    if (deleteResult.StatusCode != HttpStatusCode.OK)
+                    {
+                        _apiResponse.IsSuccess = false;
+                        _apiResponse.Errors.Add("Failed to delete image from Cloudinary");
+                        _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+                        return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+                    }
+                }
             }
 
             _db.Messages.Remove(message);

@@ -113,5 +113,28 @@ namespace real_time_chat_web.Services
             };
 
         }
+
+        public async Task<APIResponse> GetLastMessageAsync(int idRooms)
+        {
+            var response = await _roomsRepository.GetLastMessageAsync(idRooms);
+            if (response ==  null)
+            {
+                return new APIResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    IsSuccess = false,
+                    Errors = new List<string> { "No Find message" }
+                };
+            }
+            else
+            {
+                return new APIResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    IsSuccess = true,
+                    Result = response
+                };
+            }
+        }
     }
 }

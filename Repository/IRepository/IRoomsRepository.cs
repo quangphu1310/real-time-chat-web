@@ -7,6 +7,6 @@ namespace real_time_chat_web.Repository.IRepository
     {
         Task<Rooms> UpdateRoomsAsync(Rooms entity);
         Task<Rooms> CreateRoomsAsync(Rooms entity);
-        
+        Task<MessageGetDTO> GetLastMessageAsync(int idRooms);
     }
 }

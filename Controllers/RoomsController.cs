@@ -191,6 +191,24 @@ namespace real_time_chat_web.Controllers
             return Ok(new { VideoCallUrl = videoCall.VideoCallUrl });
         }
 
-
+        //Get message and time cuối cùng
+        [HttpGet("get-message-last/{roomId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        //[Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> GetLastMessage (int roomId)
+        {
+            var response = await _roomsServices.GetLastMessageAsync(roomId);
+            if (!response.IsSuccess)
+            {
+                new APIResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound,
+                    IsSuccess = false,
+                    Errors = new List<string> { "Message not found!"}
+                };
+            }
+            return Ok(response);
+        }
     }
 }

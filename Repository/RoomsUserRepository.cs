@@ -60,17 +60,26 @@ namespace real_time_chat_web.Repository
         public async Task<List<RoomsDTO>> GetRoomsByUserAsync(string user)
         {
             var rooms = await _db.RoomsUser
-                .Where(ru => ru.IdUser == user)
-                .Include(ru => ru.Rooms)
-                .Select(ru => new RoomsDTO
-                {
-                    Description = ru.Rooms.Description,
-                    IdRooms = ru.IdRooms,
-                    CreatedDate = ru.Rooms.CreatedDate,
-                    IsActive = ru.Rooms.IsActive,
-                    RoomName = ru.Rooms.RoomName,
-                })
-                .ToListAsync();
+            .Where(ru => ru.IdUser == user)
+            .Include(ru => ru.Rooms)
+            .ThenInclude(r => r.Messages) // Include tin nhắn
+            .Select(ru => new RoomsDTO
+            {
+                Description = ru.Rooms.Description,
+                IdRooms = ru.IdRooms,
+                CreatedDate = ru.Rooms.CreatedDate,
+                IsActive = ru.Rooms.IsActive,
+                RoomName = ru.Rooms.RoomName,
+                LastMessageContent = ru.Rooms.Messages
+                    .OrderByDescending(m => m.SentAt)
+                    .Select(m => m.Content)
+                    .FirstOrDefault(), // Lấy nội dung tin nhắn cuối
+                LastMessageSentAt = ru.Rooms.Messages
+                    .OrderByDescending(m => m.SentAt)
+                    .Select(m => m.SentAt)
+                    .FirstOrDefault() // Lấy thời gian gửi tin nhắn cuối
+            })
+            .ToListAsync();
             return rooms;
         }
 

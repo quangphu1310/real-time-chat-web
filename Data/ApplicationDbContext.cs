@@ -84,6 +84,12 @@ namespace real_time_chat_web.Data
                 .WithMany(u => u.CreatedVideoCalls)
                 .HasForeignKey(vc => vc.CreatedBy)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<Rooms>()
+                .HasMany(r => r.Messages)
+                .WithOne(m => m.Room)
+                .HasForeignKey(m => m.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

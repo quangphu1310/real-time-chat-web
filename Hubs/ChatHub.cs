@@ -1,4 +1,180 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿//using Microsoft.AspNetCore.SignalR;
+//using Microsoft.AspNetCore.Http;
+//using real_time_chat_web.Data;
+//using real_time_chat_web.Models;
+//using CloudinaryDotNet;
+//using CloudinaryDotNet.Actions;
+//using System;
+//using System.IO;
+//using System.Threading.Tasks;
+//using System.Linq;
+
+//namespace real_time_chat_web.Hubs
+//{
+//    public class ChatHub : Hub
+//    {
+//        private readonly ApplicationDbContext _context;
+//        private readonly IDictionary<string, UserConnection> _connections;
+//        private readonly IConfiguration _configuration;
+
+//        public ChatHub(ApplicationDbContext context, IDictionary<string, UserConnection> connections, IConfiguration configuration)
+//        {
+//            _context = context;
+//            _connections = connections;
+//            _configuration = configuration;
+//        }
+
+//        public override Task OnDisconnectedAsync(Exception exception)
+//        {
+//            if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
+//            {
+//                _connections.Remove(Context.ConnectionId);
+//                Clients.Group(userConnection.RoomId.ToString()).SendAsync("ReceiveMessage", "MyChat Bot", $"{userConnection.UserId} has left");
+//                SendUsersConnected(userConnection.RoomId);
+//            }
+
+//            return base.OnDisconnectedAsync(exception);
+//        }
+
+//        public async Task JoinRoom(int roomId, string userId)
+//        {
+//            var userConnection = new UserConnection(Context.ConnectionId, userId, roomId);
+//            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+//            _connections[Context.ConnectionId] = userConnection;
+
+//            await Clients.Group(roomId.ToString()).SendAsync("ReceiveMessage", "MyChat Bot", $"{userId} has joined the room");
+//            await SendUsersConnected(roomId);
+//        }
+
+//        // Gửi tin nhắn văn bản
+//        public async Task SendMessage(string message)
+//        {
+//            if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
+//            {
+//                // Lưu tin nhắn vào cơ sở dữ liệu
+//                var newMessage = new Messages
+//                {
+//                    Content = message,
+//                    SentAt = DateTime.Now,
+//                    IsPinned = false,
+//                    UserId = userConnection.UserId,
+//                    RoomId = userConnection.RoomId,
+//                    IsRead = false
+//                };
+
+//                _context.Messages.Add(newMessage);
+
+//                try
+//                {
+//                    await _context.SaveChangesAsync();
+//                    // Gửi tin nhắn đến nhóm
+//                    await Clients.Group(userConnection.RoomId.ToString()).SendAsync("ReceiveMessage", new
+//                    {
+//                        UserId = userConnection.UserId,
+//                        Content = newMessage.Content,
+//                        SentAt = newMessage.SentAt,
+//                        RoomId = userConnection.RoomId
+//                    });
+//                }
+//                catch (Exception ex)
+//                {
+//                    Console.WriteLine($"Error saving message: {ex.Message}");
+//                    await Clients.Caller.SendAsync("Error", "An error occurred while sending the message.");
+
+//                }
+//            }
+//        }
+
+//        // Gửi tin nhắn hình ảnh
+//        public async Task SendImage(IFormFile image)
+//        {
+//            if (_connections.TryGetValue(Context.ConnectionId, out UserConnection userConnection))
+//            {
+//                string fileUrl = null;
+
+//                if (image != null && image.Length > 0)
+//                {
+//                    try
+//                    {
+//                        // Log before uploading image
+//                        Console.WriteLine("Uploading image...");
+//                        var uploadResult = UploadImageToCloudinary(image);
+//                        fileUrl = uploadResult.Url.ToString();
+
+//                        Console.WriteLine($"Image uploaded successfully: {fileUrl}");
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        // Log error on server
+//                        Console.WriteLine($"Error uploading image: {ex.Message}");
+//                        await Clients.Caller.SendAsync("Error", $"Error uploading image: {ex.Message}");
+//                        return;
+//                    }
+
+//                    var newMessage = new Messages
+//                    {
+//                        Content = fileUrl,
+//                        SentAt = DateTime.Now,
+//                        IsPinned = false,
+//                        UserId = userConnection.UserId,
+//                        RoomId = userConnection.RoomId,
+//                        IsRead = false,
+//                        FileUrl = fileUrl
+//                    };
+
+//                    _context.Messages.Add(newMessage);
+
+//                    try
+//                    {
+//                        await _context.SaveChangesAsync();
+//                        await Clients.Group(userConnection.RoomId.ToString()).SendAsync("ReceiveMessage", new
+//                        {
+//                            UserId = userConnection.UserId,
+//                            Content = fileUrl,
+//                            SentAt = newMessage.SentAt,
+//                            RoomId = userConnection.RoomId
+//                        });
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        Console.WriteLine($"Error saving message: {ex.Message}");
+//                        await Clients.Caller.SendAsync("Error", "An error occurred while saving the message.");
+//                    }
+//                }
+//            }
+//        }
+
+
+
+//        // Gửi danh sách người dùng trong phòng
+//        public async Task SendUsersConnected(int roomId)
+//        {
+//            var users = _connections.Values
+//                .Where(c => c.RoomId == roomId)
+//                .Select(c => c.UserId);
+
+//            await Clients.Group(roomId.ToString()).SendAsync("UsersInRoom", users);
+//        }
+
+//        // Hàm upload ảnh lên Cloudinary
+//        private ImageUploadResult UploadImageToCloudinary(IFormFile image)
+//        {
+//            var cloudinary = new Cloudinary(new Account(
+//                cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+//                apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+//                apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+//            ));
+
+//            var uploadParams = new ImageUploadParams
+//            {
+//                File = new FileDescription(image.FileName, image.OpenReadStream())
+//            };
+
+//            return cloudinary.Upload(uploadParams);
+//        }
+//    }
+//}
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Http;
 using real_time_chat_web.Data;
 using real_time_chat_web.Models;

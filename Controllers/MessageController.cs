@@ -8,6 +8,13 @@ using real_time_chat_web.Models;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 
+using System.IO;
+using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
+using Microsoft.AspNetCore.SignalR;
+using real_time_chat_web.Hubs;
+
+
 [ApiController]
 [Route("api/[controller]")]
 public class MessagesController : ControllerBase
@@ -15,12 +22,19 @@ public class MessagesController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IMapper _mapper;
     private APIResponse _apiResponse;
-
-    public MessagesController(ApplicationDbContext db, IMapper mapper)
+    private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _configuration;
+    private readonly IHubContext<ChatHub> _hubContext;
+    
+    public MessagesController(ApplicationDbContext db, IMapper mapper, IHubContext<ChatHub> hubContext, IConfiguration configuration, IWebHostEnvironment env)
     {
         _db = db;
         _mapper = mapper;
         _apiResponse = new APIResponse();
+
+        _env = env;
+        _configuration= configuration;
+        _hubContext = hubContext;
     }
     [HttpGet("{id}")]
     //[Authorize( AuthenticationSchemes = "Bearer")]
@@ -89,26 +103,78 @@ public class MessagesController : ControllerBase
         }
     }
 
-    //Send a message
-    [HttpPost]
-    //[Authorize(AuthenticationSchemes = "Bearer")]
-    public async Task<IActionResult> SendMessage([FromBody] MessageCreateDTO messageDto)
+
+
+    [HttpPost("upload-file/{RoomId}")]
+    public async Task<IActionResult> UploadFile(int RoomId, IFormFile file, [FromForm] string UserId)
+
     {
         try
         {
+
+            // Upload file to Cloudinary
+            var cloudinary = new Cloudinary(new Account(
+                       cloud: _configuration.GetSection("Cloudinary:CloudName").Value,
+                       apiKey: _configuration.GetSection("Cloudinary:ApiKey").Value,
+                       apiSecret: _configuration.GetSection("Cloudinary:ApiSecret").Value
+                   ));
+
+            var uploadParams = new ImageUploadParams()
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream())
+            };
+            var uploadResult = cloudinary.Upload(uploadParams);
+            string fileUrl = uploadResult.Url.ToString();
+
+            string fileHtml = Path.GetExtension(file.FileName).ToLower() switch
+            {
+                ".jpg" or ".jpeg" or ".png" or ".gif" =>
+                    $"<a href=\"{fileUrl}\" target=\"_blank\"><img src=\"{fileUrl}\" class=\"post-image\"></a>",
+                _ => $"<a href=\"{fileUrl}\" target=\"_blank\">[File]</a>"
+            };
+
+            var newMessage = new Messages
+            {
+                RoomId = RoomId,
+                UserId = UserId,
+                SentAt = DateTime.Now,
+                FileUrl = fileUrl,
+                Content = fileHtml,
+                IsPinned = false,
+                IsRead = false
+            };
+
             messageDto.SentAt = DateTime.UtcNow;
 
             var message = _mapper.Map<Messages>(messageDto);
             message.IsPinned = false; 
 
+
             _db.Messages.Add(message);
             await _db.SaveChangesAsync();
+
+            // Tạo ViewModel để gửi qua SignalR
+            var messageViewModel = new
+            {
+                RoomId = RoomId,
+                UserId = UserId,
+                Content = fileHtml,
+                FileUrl = fileUrl,
+                SentAt = DateTime.Now
+            };
+
+            // Gửi tin nhắn tới group của phòng
+            await _hubContext.Clients.Group(RoomId.ToString())
+                .SendAsync("ReceiveMessage", messageViewModel);
+
+            return Ok(new { FileUrl = fileUrl, Content = fileHtml });
 
             _apiResponse.IsSuccess = true;
             _apiResponse.Result = _mapper.Map<MessageGetDTO>(message);
             _apiResponse.StatusCode = HttpStatusCode.Created;
 
             return CreatedAtAction(nameof(GetMessage), new { id = message.MessageId }, _apiResponse);
+
         }
         catch (Exception ex)
         {
